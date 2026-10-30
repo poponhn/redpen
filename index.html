@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#1f2937">
-<title>Redpen</title>
+<title>RedPen</title>
 <style>
 :root{--bar:#1f2937;--bar2:#111827;--fg:#f9fafb;--acc:#e11d48;--line:#d1d5db}
 *{box-sizing:border-box}
@@ -147,7 +147,7 @@ body.reading #mlist{display:none!important}
 </head>
 <body>
 <header class="bar" id="topbar">
-  <span class="brand">🖍️ Redpen</span>
+  <span class="brand">🖍️ RedPen</span>
   <button id="bOpen" title="Mở PDF (Ctrl+O)">📂<span class="lbl">Mở</span></button>
   <button id="bSave" title="Lưu PDF kèm markup (Ctrl+S)">💾<span class="lbl">Lưu</span></button>
   <button id="bPrint" title="In (Ctrl+P)">🖨️<span class="lbl">In</span></button>
@@ -220,7 +220,7 @@ body.reading #mlist{display:none!important}
 <script>
 'use strict';
 /* =========================================================
-   Redpen v1.4.1 — công cụ markup PDF offline cá nhân
+   RedPen v1.4.2 — công cụ markup PDF offline cá nhân
    Thư viện: PDF.js (Apache-2.0, Mozilla) · pdf-lib (MIT, Andrew Dillon)
    ========================================================= */
 const $ = s => document.querySelector(s);
@@ -232,6 +232,13 @@ if (!window.pdfjsLib || !window.PDFLib) {
   throw new Error('libs missing');
 }
 pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_BASE + 'pdf.worker.min.js';
+const workerReady = (async () => {
+  try {
+    const r = await fetch(PDFJS_BASE + 'pdf.worker.min.js'); if (!r.ok) return;
+    const url = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+    pdfjsLib.GlobalWorkerOptions.workerSrc = url;
+  } catch (e) { console.warn('worker blob', e); }
+})();
 const { PDFDocument, rgb, degrees, LineCapStyle } = PDFLib;
 
 const COARSE = matchMedia('(pointer:coarse)').matches;
@@ -496,6 +503,7 @@ function pageSize(en) { const z = S.sources[en.src].sizes[en.idx]; return totalR
 function getProxy(src, idx) { return src.cache[idx] || (src.cache[idx] = src.pdf.getPage(idx + 1)); }
 
 async function loadPdf(bytes) {
+  await workerReady;
   const opts = { cMapUrl: PDFJS_BASE + 'cmaps/', cMapPacked: true, standardFontDataUrl: PDFJS_BASE + 'standard_fonts/' };
   try { return await pdfjsLib.getDocument({ data: bytes.slice(), ...opts }).promise; }
   catch (e) {
@@ -507,6 +515,21 @@ async function loadPdf(bytes) {
     throw e;
   }
 }
+async function fillSizes(src) {
+  let changed = false;
+  for (let k = 1; k < src.pdf.numPages; k++) {
+    let pg; try { pg = await getProxy(src, k); } catch (e) { continue; }
+    const vp = pg.getViewport({ scale: 1, rotation: 0 }), z = src.sizes[k];
+    if (Math.abs(z.w - vp.width) > 0.5 || Math.abs(z.h - vp.height) > 0.5 || z.rotate !== (pg.rotate || 0)) changed = true;
+    src.sizes[k] = { w: vp.width, h: vp.height, rotate: pg.rotate || 0 };
+    if (k % 25 === 0) await new Promise(r => setTimeout(r, 0));
+  }
+  if (!changed) return;
+  S.panes.forEach(p => {
+    const d = getDoc(p.docId); if (!d || !d.pages.some(en => en.src === src.id)) return;
+    layoutSizes(p); p.pageEls.forEach(el => { el._scale = null; }); scheduleRender(p, 0);
+  });
+}
 async function openFiles(files) {
   const list = [...files].filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf');
   if (!list.length) return toast('Chỉ mở được file PDF');
@@ -516,11 +539,10 @@ async function openFiles(files) {
       const bytes = new Uint8Array(await f.arrayBuffer());
       const pdf = await loadPdf(bytes);
       const src = { id: newId(), name: f.name, bytes, pdf, cache: {}, sizes: [] };
-      for (let k = 0; k < pdf.numPages; k++) {
-        const pg = await getProxy(src, k), vp = pg.getViewport({ scale: 1, rotation: 0 });
-        src.sizes[k] = { w: vp.width, h: vp.height, rotate: pg.rotate || 0 };
-      }
+      const pg0 = await getProxy(src, 0), vp0 = pg0.getViewport({ scale: 1, rotation: 0 });
+      for (let k = 0; k < pdf.numPages; k++) src.sizes[k] = { w: vp0.width, h: vp0.height, rotate: pg0.rotate || 0, est: k > 0 };
       S.sources[src.id] = src;
+      if (pdf.numPages > 1) setTimeout(() => fillSizes(src), 50);
       const doc = { id: newId(), name: f.name, pages: src.sizes.map((_, k) => ({ src: src.id, idx: k, rot: 0, annots: [] })), dirty: false };
       S.docs.push(doc);
       const p = S.panes.find(q => !q.docId) || activePane();
@@ -689,6 +711,9 @@ function freePage(el) {
   const ov = el.querySelector('.ov'); ov.width = ov.height = 0;
   el._scale = null; el._vp = null;
 }
+let rActive = 0; const rWait = [];
+function renderSlot() { if (rActive < 2) { rActive++; return Promise.resolve(); } return new Promise(r => rWait.push(r)); }
+function renderRelease() { const w = rWait.pop(); if (w) w(); else rActive = Math.max(0, rActive - 1); }
 async function renderPage(p, i) {
   const el = p.pageEls[i], doc = getDoc(p.docId);
   if (!el || !doc) return;
@@ -700,8 +725,8 @@ async function renderPage(p, i) {
   if (el._scale !== scale || p.pageEls[i] !== el) return;
   const vp = pg.getViewport({ scale, rotation: totalRot(en) });
   el._vp = vp;
-  let pr = Math.min(window.devicePixelRatio || 1, 3);
-  const area = vp.width * vp.height, MAX = COARSE ? 8e6 : 16e6;
+  let pr = Math.min(window.devicePixelRatio || 1, 2);
+  const area = vp.width * vp.height, MAX = COARSE ? 6e6 : 10e6;
   if (area * pr * pr > MAX) pr = Math.sqrt(MAX / area);
   const ov = el.querySelector('.ov');
   el._opr = Math.min(pr, 2);
@@ -709,9 +734,12 @@ async function renderPage(p, i) {
   drawOverlay(p, i);
   const off = document.createElement('canvas'); off.className = 'pdfc';
   off.width = Math.max(1, Math.floor(vp.width * pr)); off.height = Math.max(1, Math.floor(vp.height * pr));
+  await renderSlot();
+  if (el._scale !== scale || p.pageEls[i] !== el || !p.visible.has(i)) { renderRelease(); if (el._scale === scale) el._scale = null; return; }
   const task = pg.render({ canvasContext: off.getContext('2d'), viewport: vp, transform: [pr, 0, 0, pr, 0, 0] });
   el._task = task;
-  try { await task.promise; } catch (e) { return; }
+  try { await task.promise; } catch (e) { renderRelease(); return; }
+  renderRelease();
   if (el._task !== task) return;
   el._task = null;
   if (el._scale !== scale) return;
@@ -1267,7 +1295,7 @@ async function buildPdf(doc) {
       for (const a of en.annots) await drawAnnotPdf(out, pg, a, vp1, rot, en);
     }
   }
-  out.setProducer('Redpen v1.4.1');
+  out.setProducer('RedPen v1.4.2');
   return out.save();
 }
 async function deliver(bytes, name, type = 'application/pdf') {
@@ -1612,7 +1640,7 @@ function renderChest() {
     L.appendChild(d); previewItems(d.querySelector('canvas'), it.items);
   });
   $('#chAdd').onclick = addSelToChest;
-  $('#chExp').onclick = () => deliver(new TextEncoder().encode(JSON.stringify({ app: 'Redpen', chest: S.chest }, null, 1)), 'redpen-toolchest.json', 'application/json');
+  $('#chExp').onclick = () => deliver(new TextEncoder().encode(JSON.stringify({ app: 'RedPen', chest: S.chest }, null, 1)), 'redpen-toolchest.json', 'application/json');
   $('#chImp').onclick = () => $('#chestFile').click();
 }
 async function onChestClick(e) {
@@ -1689,7 +1717,7 @@ $('#bSync').onclick = () => {
   else toast('Đã tắt đồng bộ');
 };
 $('#layoutSel').onchange = e => { S.layout = +e.target.value; renderLayout(); };
-$('#bAbout').onclick = () => cmdChoose('Redpen v1.4.1\nCông cụ markup PDF offline cá nhân.\n\nFile PDF chỉ được xử lý trên máy của bạn, không gửi đi đâu.\n\nThư viện sử dụng:\n• PDF.js — Mozilla, giấy phép Apache-2.0\n• pdf-lib — Andrew Dillon, giấy phép MIT\n\nPhím tắt: V chọn · P bút · L đường · A mũi tên · R chữ nhật · E elip · C cloud · H tô sáng · T chữ · D đo dài · G diện tích (Enter để kết thúc) · N đếm\nShift+click / kéo khung: chọn nhiều · Ctrl+A chọn hết trang · Ctrl+G group · Ctrl+Shift+G bỏ group · Ctrl+C/V copy dán\nCtrl+Z/Y hoàn tác/làm lại · Delete xóa · +/− zoom · M danh sách markup · F đọc toàn màn hình · ←/→ lật trang', [{ l: 'Đóng', v: 1 }]);
+$('#bAbout').onclick = () => cmdChoose('RedPen v1.4.2\nCông cụ markup PDF offline cá nhân.\n\nFile PDF chỉ được xử lý trên máy của bạn, không gửi đi đâu.\n\nThư viện sử dụng:\n• PDF.js — Mozilla, giấy phép Apache-2.0\n• pdf-lib — Andrew Dillon, giấy phép MIT\n\nPhím tắt: V chọn · P bút · L đường · A mũi tên · R chữ nhật · E elip · C cloud · H tô sáng · T chữ · D đo dài · G diện tích (Enter để kết thúc) · N đếm\nShift+click / kéo khung: chọn nhiều · Ctrl+A chọn hết trang · Ctrl+G group · Ctrl+Shift+G bỏ group · Ctrl+C/V copy dán\nCtrl+Z/Y hoàn tác/làm lại · Delete xóa · +/− zoom · M danh sách markup · F đọc toàn màn hình · ←/→ lật trang', [{ l: 'Đóng', v: 1 }]);
 
 window.addEventListener('keydown', e => {
   const tag = (e.target.tagName || '').toLowerCase();
