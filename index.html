@@ -1,0 +1,1735 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#1f2937">
+<title>Redpen</title>
+<style>
+:root{--bar:#1f2937;--bar2:#111827;--fg:#f9fafb;--acc:#e11d48;--line:#d1d5db}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:#e5e7eb;color:#111}
+body{display:flex;flex-direction:column;height:100vh;height:100dvh}
+.bar{display:flex;align-items:center;gap:2px;padding:2px 4px;background:var(--bar);color:var(--fg);overflow-x:auto;scrollbar-width:none;flex:0 0 auto}
+.bar::-webkit-scrollbar{display:none}
+#toolbar{background:var(--bar2)}
+#tools,#colors{display:flex;gap:3px;align-items:center;flex:0 0 auto}
+.bar button,.bar select{flex:0 0 auto;height:28px;min-width:28px;padding:0 6px;border:1px solid transparent;border-radius:6px;background:transparent;color:inherit;font:inherit;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
+.bar button:hover{background:#374151}
+.bar button.on{background:var(--acc)}
+.bar button:disabled{opacity:.35;cursor:default}
+.bar select{background:#374151;border-color:#4b5563}
+.sep{width:1px;height:18px;background:#4b5563;margin:0 4px;flex:0 0 auto}
+.brand{font-size:14px;font-weight:800;color:#fda4af;margin-right:6px;white-space:nowrap}
+.sw{width:20px!important;min-width:20px!important;height:20px!important;padding:0!important;border-radius:50%!important;border:2px solid #ffffff55!important}
+.sw.on{outline:2px solid #fff;outline-offset:2px}
+#workspace{flex:1;display:flex;min-height:0;position:relative}
+#panes{flex:1;display:grid;gap:4px;padding:4px;min-width:0;min-height:0}
+#panes.l1{grid-template:1fr/1fr}
+#panes.l2{grid-template:1fr/1fr 1fr}
+#panes.l3{grid-template:1fr/1fr 1fr 1fr}
+#panes.l4{grid-template:1fr 1fr/1fr 1fr}
+.pane{display:flex;flex-direction:column;min-width:0;min-height:0;border:2px solid transparent;border-radius:7px;overflow:hidden;background:#6b7280}
+.pane.active{border-color:var(--acc)}
+.phead{display:flex;align-items:center;gap:3px;padding:2px 4px;background:#f3f4f6;border-bottom:1px solid var(--line);font-size:12px;flex:0 0 auto}
+.phead select{flex:1;min-width:0;height:24px;border:1px solid var(--line);border-radius:5px;background:#fff;font:inherit}
+.phead button{height:24px;min-width:24px;border:1px solid var(--line);border-radius:5px;background:#fff;cursor:pointer;font:inherit}
+.pinfo,.zl{white-space:nowrap;color:#374151;padding:0 3px;font-variant-numeric:tabular-nums}
+.scroller{flex:1;overflow:auto;position:relative;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch}
+.inner{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px;width:max-content;min-width:100%}
+.page{position:relative;background:#fff;box-shadow:0 1px 5px #0006;flex:0 0 auto}
+.page canvas{position:absolute;left:0;top:0;width:100%;height:100%}
+.ov{touch-action:pan-x pan-y}
+#panes.drawing .ov,#panes.grab .ov{touch-action:none}
+#panes.drawing .ov{cursor:crosshair}
+#panes.texting .ov{cursor:text}
+.empty{color:#f3f4f6;text-align:center;margin:auto;padding:40px 16px;line-height:1.7;font-size:16px}
+.empty small{color:#d1d5db}
+#sidebar{width:260px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;flex:0 0 auto}
+#sidebar[hidden]{display:none}
+.sbhead{padding:8px;font-weight:700;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:6px;align-items:center}
+.sbhead span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.sbhead button{border:0;background:none;font-size:18px;cursor:pointer}
+.tabs{display:flex;gap:2px;flex:1;min-width:0}
+.tabs button{flex:1;height:28px;border:1px solid var(--line);border-radius:5px;background:#f9fafb;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap;padding:0 4px}
+.tabs button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.tabbody{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.tabbody[hidden]{display:none}
+#tabProps,#tabChest{overflow:auto;padding:8px;font-size:13px;gap:8px}
+.pf{display:grid;grid-template-columns:84px 1fr;gap:6px 8px;align-items:center}
+.pf label{color:#4b5563}
+.pf input[type=number],.pf select,.pf input[type=text],.pf textarea{width:100%;height:28px;border:1px solid var(--line);border-radius:5px;font:inherit;padding:0 6px;background:#fff}
+.pf textarea{height:56px;padding:4px 6px;resize:vertical}
+.pf input[type=color]{width:36px;height:28px;border:1px solid var(--line);border-radius:5px;padding:1px;background:#fff}
+.pf input[type=range]{width:100%}
+.pf .ro{color:#111;font-weight:600;word-break:break-word}
+.prow{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.psw{width:20px;height:20px;border-radius:50%;border:2px solid #fff;outline:1px solid #d1d5db;cursor:pointer;padding:0}
+.pbtns{display:flex;flex-wrap:wrap;gap:6px}
+.pbtns button,.chbtns button{height:30px;border:1px solid var(--line);border-radius:5px;background:#fff;font:inherit;cursor:pointer;padding:0 8px}
+.pbtns button.pri,.chbtns button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+.pbtns button:disabled{opacity:.4;cursor:default}
+.phint{color:#6b7280;line-height:1.5}
+.ptitle{font-weight:700}
+.chbtns{display:flex;flex-wrap:wrap;gap:6px}
+.chitem{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:6px;padding:4px;cursor:pointer;background:#fff}
+.chitem.on{outline:2px solid var(--acc)}
+.chitem canvas{width:64px;height:44px;background:#fff;border:1px solid #eee;border-radius:4px;flex:0 0 auto}
+.chitem span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chitem button{border:1px solid var(--line);background:#fff;border-radius:4px;min-width:26px;height:26px;cursor:pointer}
+#thumbs{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:10px;background:#f3f4f6}
+.th{background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px;cursor:pointer}
+.th canvas{width:100%;height:auto;display:block;min-height:50px;background:#fff}
+.thbar{display:flex;align-items:center;justify-content:space-between;margin-top:4px;font-size:12px}
+.thbar button{border:1px solid var(--line);background:#fff;border-radius:4px;min-width:26px;height:26px;cursor:pointer;padding:0 3px}
+.insbox{padding:8px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px;font-size:13px}
+.insbox select,.insbox input,.insbox button{height:32px;border:1px solid var(--line);border-radius:5px;font:inherit;padding:0 6px;background:#fff}
+.insbox button{background:var(--acc);color:#fff;border:0;cursor:pointer;font-weight:600}
+.insbox button.alt{background:#374151}
+#readbar{display:none;position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:30;background:#111827dd;color:#fff;border-radius:24px;padding:4px 6px;gap:4px;align-items:center;box-shadow:0 2px 10px #0006}
+#readbar button{background:none;border:0;color:#fff;font-size:18px;min-width:40px;height:40px;cursor:pointer;border-radius:20px}
+#readbar span{min-width:60px;text-align:center;font-variant-numeric:tabular-nums}
+body.reading .bar,body.reading .phead,body.reading #sidebar{display:none!important}
+body.reading #readbar{display:flex}
+body.reading #panes{padding:0;gap:2px}
+#mlist{flex:0 0 auto;height:30vh;min-height:90px;max-height:75vh;background:#fff;border-top:1px solid var(--line);display:flex;flex-direction:column;position:relative}
+#mlist[hidden]{display:none}
+#mlGrip{height:8px;cursor:ns-resize;background:#e5e7eb;touch-action:none;flex:0 0 auto;display:flex;justify-content:center;align-items:center}
+#mlGrip::after{content:'';width:40px;height:3px;border-radius:2px;background:#9ca3af}
+.mlhead{display:flex;align-items:center;gap:5px;padding:3px 6px;border-bottom:1px solid var(--line);font-size:13px;flex-wrap:wrap;flex:0 0 auto}
+.mlhead select,.mlhead input,.mlhead button{height:26px;border:1px solid var(--line);border-radius:5px;font:inherit;background:#fff;padding:0 6px}
+.mlhead button{cursor:pointer}
+.mlhead input{width:130px}
+#mlCount{color:#6b7280}
+.mlbody{flex:1;overflow:auto}
+#mlTable{border-collapse:collapse;width:100%;font-size:13px;min-width:720px}
+#mlTable th{position:sticky;top:0;background:#f3f4f6;text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);font-weight:600;white-space:nowrap;z-index:1}
+#mlTable td{padding:3px 6px;border-bottom:1px solid #eef0f3;vertical-align:middle}
+#mlTable tr{cursor:pointer}
+#mlTable tbody tr:hover{background:#f9fafb}
+#mlTable tr.cur{background:#fee2e2}
+#mlTable input.note{width:100%;min-width:180px;height:28px;border:1px solid var(--line);border-radius:4px;padding:0 6px;font:inherit}
+#mlTable select{height:28px;border:1px solid var(--line);border-radius:4px;font:inherit}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:middle}
+.st-open{color:#b91c1c}.st-done{color:#15803d}.st-rej{color:#6b7280}
+.mlempty{padding:16px;color:#6b7280;text-align:center}
+body.reading #mlist{display:none!important}
+#cmd{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:5px 8px;background:#0b1220;color:#e5e7eb;font-family:ui-monospace,Consolas,monospace;font-size:13px;border-top:2px solid var(--acc);flex-wrap:wrap}
+#cmd[hidden]{display:none}
+#cmdMsg{white-space:pre-wrap}
+#cmdMsg b{color:#fda4af}
+#cmdIn{flex:1;min-width:140px;height:30px;background:#111827;color:#fff;border:1px solid #374151;border-radius:5px;padding:0 8px;font:inherit;font-size:16px}
+#cmdIn[hidden]{display:none}
+#cmdBtns{display:flex;gap:6px;flex-wrap:wrap}
+#cmd button{height:30px;padding:0 12px;border-radius:5px;border:1px solid #374151;background:#1f2937;color:#fff;font:inherit;cursor:pointer}
+#cmd button.pri{background:var(--acc);border-color:var(--acc)}
+#cmdErr{color:#fca5a5;width:100%}
+#cmdErr:empty{display:none}
+#toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:#111827ee;color:#fff;padding:8px 14px;border-radius:8px;font-size:14px;z-index:50;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+#printArea{display:none}
+@media (max-width:700px){
+  .bar button,.bar select{height:32px;min-width:32px}
+  #panes.l2{grid-template:1fr 1fr/1fr}
+  .lbl{display:none}
+  #sidebar{position:absolute;z-index:20;left:0;top:0;bottom:0;width:82%;box-shadow:4px 0 16px #0005}
+}
+@media print{
+  html,body{height:auto;overflow:visible;display:block;background:#fff}
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block}
+  #printArea img{display:block;width:100%;height:auto;break-after:page;page-break-after:always}
+  @page{margin:6mm}
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+</head>
+<body>
+<header class="bar" id="topbar">
+  <span class="brand">🖍️ Redpen</span>
+  <button id="bOpen" title="Mở PDF (Ctrl+O)">📂<span class="lbl">Mở</span></button>
+  <button id="bSave" title="Lưu PDF kèm markup (Ctrl+S)">💾<span class="lbl">Lưu</span></button>
+  <button id="bPrint" title="In (Ctrl+P)">🖨️<span class="lbl">In</span></button>
+  <span class="sep"></span>
+  <button id="bUndo" title="Hoàn tác (Ctrl+Z)">↶</button>
+  <button id="bRedo" title="Làm lại (Ctrl+Y)">↷</button>
+  <span class="sep"></span>
+  <select id="layoutSel" title="Chia màn hình">
+    <option value="1">▣ 1 ô</option><option value="2">◫ 2 ô</option><option value="3">▥ 3 ô</option><option value="4">⊞ 4 ô</option>
+  </select>
+  <button id="bSync" title="Đồng bộ cuộn và zoom giữa các ô">🔗<span class="lbl">Đồng bộ</span></button>
+  <button id="bPages" title="Bảng bên: Trang · Thuộc tính · Tool Chest">◧<span class="lbl">Panel</span></button>
+  <button id="bList" title="Danh sách markup / comment (M)">💬<span class="lbl">Markups</span></button>
+  <button id="bRead" title="Chế độ đọc toàn màn hình (F)">⛶<span class="lbl">Đọc</span></button>
+  <button id="bAbout" title="Giới thiệu">ℹ️</button>
+</header>
+<div class="bar" id="toolbar">
+  <span id="tools"></span>
+  <span class="sep"></span>
+  <span id="colors"></span>
+  <select id="wsel" title="Độ dày nét / cỡ chữ">
+    <option value="1">Mảnh</option><option value="2" selected>Vừa</option><option value="3">Dày</option><option value="5">Rất dày</option>
+  </select>
+  <button id="bDel" title="Xóa markup đang chọn (Delete)" disabled>🗑<span class="lbl">Xóa</span></button>
+</div>
+<main id="workspace">
+  <aside id="sidebar" hidden>
+    <div class="sbhead"><div class="tabs"><button data-tab="pages">📑 Trang</button><button data-tab="props">🎛 Thuộc tính</button><button data-tab="chest">🧰 Tool Chest</button></div><button id="sbClose" title="Đóng">✕</button></div>
+    <div class="tabbody" id="tabPages">
+      <div style="padding:4px 8px;font-size:12px;color:#4b5563;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="sbTitle"></div>
+      <div id="thumbs"></div>
+      <div class="insbox">
+        <b>Chèn trang từ file khác</b>
+        <select id="insSrc" title="Lấy trang từ file"></select>
+        <input id="insRange" placeholder="Trang, vd: 1-3,5 (trống = tất cả)">
+        <select id="insPos">
+          <option value="after">Sau trang đang xem</option>
+          <option value="start">Đầu file</option>
+          <option value="end">Cuối file</option>
+        </select>
+        <button id="insBtn">➕ Chèn vào file đang xem</button>
+        <button id="newBtn" class="alt">📄 Tách thành file mới</button>
+      </div>
+    </div>
+    <div class="tabbody" id="tabProps" hidden></div>
+    <div class="tabbody" id="tabChest" hidden></div>
+  </aside>
+  <div id="panes" class="l1"></div>
+</main>
+<section id="mlist" hidden>
+  <div id="mlGrip" title="Kéo để chỉnh chiều cao"></div>
+  <div class="mlhead">
+    <b>💬 Markups</b><span id="mlCount"></span>
+    <select id="mlFilter" title="Phạm vi"><option value="all">Tất cả trang</option><option value="page">Trang đang xem</option></select>
+    <select id="mlStFilter" title="Lọc trạng thái"><option value="">Mọi trạng thái</option><option value="open">Mở</option><option value="done">Đã xử lý</option><option value="rej">Không xử lý</option></select>
+    <input id="mlSearch" placeholder="🔍 Tìm…">
+    <button id="mlAuthor" title="Tên người review">👤</button>
+    <button id="mlCsv" title="Xuất comment sheet ra Excel (CSV)">⬇ Excel</button>
+    <button id="mlClose" title="Đóng">✕</button>
+  </div>
+  <div class="mlbody"><table id="mlTable"><thead><tr><th>#</th><th>Trang</th><th>Loại</th><th>Màu</th><th>Nội dung / Số đo</th><th>Comment</th><th>Trạng thái</th><th>Người tạo</th><th>Thời gian</th></tr></thead><tbody id="mlRows"></tbody></table></div>
+</section>
+<div id="cmd" hidden><span id="cmdMsg"></span><input id="cmdIn" autocomplete="off" hidden><span id="cmdBtns"></span><button id="cmdX" title="Hủy (Esc)">✕</button><div id="cmdErr"></div></div>
+<div id="readbar"><button id="rPrev" title="Trang trước">◀</button><span id="rInfo"></span><button id="rNext" title="Trang sau">▶</button><button id="rExit" title="Thoát chế độ đọc">✕</button></div>
+<div id="toast"></div>
+<div id="printArea"></div>
+<input type="file" id="fileInput" accept="application/pdf,.pdf" multiple hidden>
+<input type="file" id="chestFile" accept=".json,application/json" hidden>
+
+<script>
+'use strict';
+/* =========================================================
+   Redpen v1.4.1 — công cụ markup PDF offline cá nhân
+   Thư viện: PDF.js (Apache-2.0, Mozilla) · pdf-lib (MIT, Andrew Dillon)
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const PDFJS_V = '3.11.174';
+const PDFJS_BASE = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_V}/`;
+
+if (!window.pdfjsLib || !window.PDFLib) {
+  document.body.innerHTML = '<div style="padding:30px;font-family:sans-serif">Không tải được thư viện PDF. Lần đầu mở app cần có mạng, bạn kiểm tra kết nối rồi tải lại trang nhé.</div>';
+  throw new Error('libs missing');
+}
+pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_BASE + 'pdf.worker.min.js';
+const { PDFDocument, rgb, degrees, LineCapStyle } = PDFLib;
+
+const COARSE = matchMedia('(pointer:coarse)').matches;
+const HL = '#facc15';
+const COLORS = ['#e11d48', '#2563eb', '#16a34a', '#111827', '#f97316', '#9333ea'];
+const TOOLS = [
+  { t: 'select', i: '↖', l: 'Chọn', k: 'v' },
+  { t: 'pen', i: '✎', l: 'Bút', k: 'p' },
+  { t: 'line', i: '╱', l: 'Đường', k: 'l' },
+  { t: 'arrow', i: '➜', l: 'Mũi tên', k: 'a' },
+  { t: 'rect', i: '▭', l: 'Chữ nhật', k: 'r' },
+  { t: 'ellipse', i: '◯', l: 'Elip', k: 'e' },
+  { t: 'cloud', i: '☁', l: 'Cloud', k: 'c' },
+  { t: 'highlight', i: '▮', l: 'Tô sáng', k: 'h' },
+  { t: 'text', i: 'T', l: 'Chữ', k: 't' },
+  { t: 'mlen', i: '↔', l: 'Đo dài', k: 'd' },
+  { t: 'marea', i: '⬠', l: 'Diện tích', k: 'g' },
+  { t: 'mcount', i: '⊕', l: 'Đếm', k: 'n' },
+  { t: 'calib', i: '', l: 'Hiệu chỉnh', k: '', hidden: true },
+  { t: 'stamp', i: '', l: 'Tool Chest', k: '', hidden: true },
+];
+const MEAS = ['mlen', 'marea', 'mcount'];
+const PT_MM = 25.4 / 72;
+
+const S = { sources: {}, docs: [], panes: [], active: 0, tool: 'select', color: COLORS[0], width: 2,
+  sync: false, layout: 1, undo: [], redo: [], sel: null, reading: false, author: '', poly: null, multi: false, tab: 'pages', chest: [], stamp: null, clip: null };
+try { S.author = localStorage.getItem('redpen_author') || ''; } catch (e) {}
+let uid = 1;
+const newId = () => uid++;
+let drag = null;
+const touchPtrs = new Set();
+
+/* ---------- tiện ích ---------- */
+function toast(msg, ms = 2200) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); if (ms) t._h = setTimeout(() => t.classList.remove('show'), ms);
+}
+/* ---------- command line kiểu CAD ---------- */
+const CMD = { res: null, onCancel: null };
+function cmdEnd(v) {
+  const r = CMD.res, oc = CMD.onCancel; CMD.res = null; CMD.onCancel = null;
+  $('#cmd').hidden = true; $('#cmdIn').hidden = true; $('#cmdIn').blur(); $('#cmdBtns').innerHTML = ''; $('#cmdErr').textContent = '';
+  if (v === null && oc) oc();
+  if (r) r(v);
+}
+function cmdOpen(msg) {
+  if (CMD.res || CMD.onCancel) cmdEnd(null);
+  $('#cmdMsg').innerHTML = msg; $('#cmdErr').textContent = ''; $('#cmd').hidden = false;
+}
+// hỏi nhập giá trị → Promise<string|null>
+function cmdAsk(msg, o = {}) {
+  cmdOpen(msg);
+  const inp = $('#cmdIn'); inp.hidden = false; inp.type = o.type || 'text';
+  inp.value = o.value || ''; inp.placeholder = o.placeholder || '';
+  $('#cmdBtns').innerHTML = '<button class="pri" data-v="ok">OK ⏎</button>';
+  if (o.err) $('#cmdErr').textContent = o.err;
+  setTimeout(() => { inp.focus(); inp.select(); }, 30);
+  return new Promise(r => { CMD.res = r; CMD.ask = true; });
+}
+// chọn phương án → Promise<value|null>
+function cmdChoose(msg, opts) {
+  cmdOpen(msg); $('#cmdIn').hidden = true;
+  $('#cmdBtns').innerHTML = opts.map((o, k) => `<button data-v="${k}"${k === 0 ? ' class="pri"' : ''}>${o.l}</button>`).join('');
+  CMD.opts = opts; CMD.ask = false;
+  return new Promise(r => { CMD.res = r; });
+}
+// chỉ hiện hướng dẫn (đang chờ thao tác trên bản vẽ)
+function cmdInfo(msg, onCancel) {
+  cmdOpen(msg); $('#cmdIn').hidden = true; $('#cmdBtns').innerHTML = '';
+  CMD.onCancel = onCancel || null;
+}
+function cmdHide() { CMD.onCancel = null; if (!CMD.res) { $('#cmd').hidden = true; $('#cmdBtns').innerHTML = ''; } }
+const cmdActive = () => !$('#cmd').hidden;
+function cmdConfirm(msg, yes = 'Đồng ý', no = 'Hủy') { return cmdChoose(msg, [{ l: yes, v: true }, { l: no, v: false }]).then(v => v === true); }
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function parseRange(str, n) {
+  str = (str || '').trim();
+  if (!str) return [...Array(n).keys()];
+  const out = [];
+  for (const part of str.split(/[,;]/)) {
+    const m = part.trim().match(/^(\d+)\s*(?:-\s*(\d+))?$/);
+    if (!m) return null;
+    let a = +m[1], b = m[2] ? +m[2] : a;
+    if (a < 1 || b < 1 || a > n || b > n) return null;
+    const st = a <= b ? 1 : -1;
+    for (let k = a; st > 0 ? k <= b : k >= b; k += st) out.push(k - 1);
+  }
+  return out;
+}
+
+/* ---------- hình học (toạ độ PDF) ---------- */
+function rectOf(a) { const [p, q] = a.pts; return { x0: Math.min(p[0], q[0]), y0: Math.min(p[1], q[1]), x1: Math.max(p[0], q[0]), y1: Math.max(p[1], q[1]) }; }
+function rectPts(a) { const r = rectOf(a); return [[r.x0, r.y0], [r.x1, r.y0], [r.x1, r.y1], [r.x0, r.y1]]; }
+function ellipsePts(a) {
+  const r = rectOf(a), cx = (r.x0 + r.x1) / 2, cy = (r.y0 + r.y1) / 2, rx = (r.x1 - r.x0) / 2, ry = (r.y1 - r.y0) / 2, o = [];
+  for (let k = 0; k < 72; k++) { const t = k / 72 * Math.PI * 2; o.push([cx + rx * Math.cos(t), cy + ry * Math.sin(t)]); }
+  return o;
+}
+function cloudPts(a) {
+  const c = rectPts(a), r = rectOf(a), C = [(r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2], out = [], arc = a.arc || 10;
+  for (let e = 0; e < 4; e++) {
+    const A = c[e], B = c[(e + 1) % 4], dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy);
+    if (L < 1e-6) continue;
+    const n = Math.max(1, Math.round(L / arc)), ux = dx / L, uy = dy / L;
+    let nx = -uy, ny = ux;
+    if (((A[0] + B[0]) / 2 - C[0]) * nx + ((A[1] + B[1]) / 2 - C[1]) * ny < 0) { nx = -nx; ny = -ny; }
+    const seg = L / n, rad = seg / 2;
+    for (let s = 0; s < n; s++) {
+      const cx = A[0] + ux * (seg * s + rad), cy = A[1] + uy * (seg * s + rad);
+      for (let k = 0; k <= 8; k++) {
+        const f = k / 8 * Math.PI;
+        out.push([cx - ux * rad * Math.cos(f) + nx * rad * Math.sin(f), cy - uy * rad * Math.cos(f) + ny * rad * Math.sin(f)]);
+      }
+    }
+  }
+  return out;
+}
+function arrowHead(a) {
+  const p = a.pts[0], q = a.pts[a.pts.length - 1], dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy) || 1;
+  const ux = dx / L, uy = dy / L, h = Math.max(a.w * 5, (a.arc || 10) * 0.9), t = 0.45;
+  const rot = (x, y, g) => [x * Math.cos(g) - y * Math.sin(g), x * Math.sin(g) + y * Math.cos(g)];
+  const b1 = rot(-ux, -uy, t), b2 = rot(-ux, -uy, -t);
+  return [[[q[0] + b1[0] * h, q[1] + b1[1] * h], q, [q[0] + b2[0] * h, q[1] + b2[1] * h]]];
+}
+function geomPts(a) {
+  switch (a.type) {
+    case 'arrow': return a.pts.concat(arrowHead(a)[0]);
+    case 'rect': case 'highlight': return rectPts(a);
+    case 'ellipse': return ellipsePts(a);
+    case 'cloud': return cloudPts(a);
+    default: return a.pts;
+  }
+}
+
+/* ---------- đo đạc ---------- */
+function polyLen(pts, closed) { let L = 0; for (let k = 1; k < pts.length; k++) L += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]); if (closed && pts.length > 2) L += Math.hypot(pts[0][0] - pts[pts.length - 1][0], pts[0][1] - pts[pts.length - 1][1]); return L; }
+function polyArea(pts) { let A = 0; for (let k = 0; k < pts.length; k++) { const a = pts[k], b = pts[(k + 1) % pts.length]; A += a[0] * b[1] - b[0] * a[1]; } return Math.abs(A) / 2; }
+function fmtLen(m, unit) { return unit === 'mm' ? Math.round(m * 1000).toLocaleString('vi-VN') + ' mm' : m.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' m'; }
+function ratioTxt(sc) { return sc ? '1:' + Math.round(sc.f * 1000 / PT_MM) : ''; }
+function measureText(a, en) {
+  if (a.type === 'mcount') return 'Đếm #' + a.n;
+  const sc = en && en.scale;
+  if (!sc) return 'chưa có tỷ lệ';
+  if (a.type === 'mlen') return fmtLen(polyLen(a.pts) * sc.f, sc.unit);
+  if (a.type === 'marea') return `A = ${(polyArea(a.pts) * sc.f * sc.f).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m² · P = ${fmtLen(polyLen(a.pts, true) * sc.f, sc.unit)}`;
+  return '';
+}
+function ticks(a) {
+  const p = a.pts[0], q = a.pts[a.pts.length - 1], dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy) || 1;
+  const nx = -dy / L * a.size * 0.4, ny = dx / L * a.size * 0.4;
+  return [[[p[0] + nx, p[1] + ny], [p[0] - nx, p[1] - ny]], [[q[0] + nx, q[1] + ny], [q[0] - nx, q[1] - ny]]];
+}
+function centroid(pts) { let x = 0, y = 0; pts.forEach(q => { x += q[0]; y += q[1]; }); return [x / pts.length, y / pts.length]; }
+// tâm nhãn (toạ độ hiển thị của vp)
+function labelCenter(a, vp) {
+  const V = q => vp.convertToViewportPoint(q[0], q[1]), fs = a.size * vp.scale;
+  if (a.type === 'mlen') { const P = V(a.pts[0]), Q = V(a.pts[a.pts.length - 1]); return [(P[0] + Q[0]) / 2, (P[1] + Q[1]) / 2 - fs * 0.9]; }
+  return V(a.type === 'marea' ? centroid(a.pts) : a.pts[0]);
+}
+function drawLabel(ctx, C, txt, fs, color, bg) {
+  ctx.save(); ctx.font = FONT(fs);
+  const w = ctx.measureText(txt).width;
+  if (bg) { ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(C[0] - w / 2 - 3, C[1] - fs * 0.65, w + 6, fs * 1.3); }
+  ctx.fillStyle = color; ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.fillText(txt, C[0], C[1] + fs * 0.05);
+  ctx.restore();
+}
+
+/* ---------- vẽ markup lên canvas ---------- */
+const FONT = px => `600 ${px}px system-ui,"Segoe UI",Roboto,Arial,sans-serif`;
+const mctx = document.createElement('canvas').getContext('2d');
+function textMetrics(a, sc) {
+  const fs = a.size * sc; mctx.font = FONT(fs);
+  const lines = String(a.text).split('\n');
+  const w = Math.max(1, ...lines.map(l => mctx.measureText(l).width));
+  return { fs, lines, w, lh: fs * 1.25, h: fs * 1.25 * lines.length };
+}
+function tracePath(ctx, pts, closed) {
+  if (!pts.length) return;
+  ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+  if (pts.length === 1) ctx.lineTo(pts[0][0] + 0.01, pts[0][1]);
+  for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+  if (closed) ctx.closePath();
+}
+const CLOSED = ['rect', 'ellipse', 'cloud', 'marea'];
+function dashOf(a, k) { const b = Math.max(a.w || 0, 0.5) * k; return a.dash === 'dash' ? [b * 5, b * 3] : a.dash === 'dot' ? [0.01, b * 2.5] : []; }
+function drawAnnot(ctx, vp, a, en) {
+  const sc = vp.scale, V = p => vp.convertToViewportPoint(p[0], p[1]), op = a.op == null ? 1 : a.op;
+  ctx.save();
+  ctx.globalAlpha = op; ctx.strokeStyle = a.color; ctx.fillStyle = a.color;
+  ctx.lineWidth = Math.max(0.6, a.w * sc); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const dash = dashOf(a, sc);
+  const strokeP = (pts, closed, useDash = true) => { ctx.setLineDash(useDash ? dash : []); tracePath(ctx, pts.map(V), closed); ctx.stroke(); };
+  const fillP = (pts, alpha) => { ctx.save(); ctx.globalAlpha = op * alpha; ctx.fillStyle = a.fill || a.color; tracePath(ctx, pts.map(V), true); ctx.fill(); ctx.restore(); };
+  switch (a.type) {
+    case 'text': {
+      const m = textMetrics(a, sc), P = V(a.pts[0]);
+      ctx.font = FONT(m.fs); ctx.textBaseline = 'top';
+      m.lines.forEach((l, k) => ctx.fillText(l, P[0], P[1] + k * m.lh + m.fs * 0.1));
+      break;
+    }
+    case 'highlight': fillP(rectPts(a), 0.35); break;
+    case 'arrow': strokeP(a.pts, false); arrowHead(a).forEach(s => strokeP(s, false, false)); break;
+    case 'mlen': case 'calib':
+      strokeP(a.pts, false); ticks(a).forEach(s => strokeP(s, false, false));
+      if (a.type === 'mlen') drawLabel(ctx, labelCenter(a, vp), measureText(a, en), a.size * sc, a.color, true);
+      break;
+    case 'marea':
+      fillP(a.pts, a.fill ? (a.fop == null ? 0.3 : a.fop) : 0.12); strokeP(a.pts, true);
+      if (a.pts.length >= 3) drawLabel(ctx, labelCenter(a, vp), measureText(a, en), a.size * sc, a.color, true);
+      break;
+    case 'mcount': {
+      const P = V(a.pts[0]), r = a.size * sc * 0.75;
+      ctx.beginPath(); ctx.arc(P[0], P[1], r, 0, Math.PI * 2); ctx.fill();
+      drawLabel(ctx, P, String(a.n), a.size * sc * 0.8, '#fff', false);
+      break;
+    }
+    default: {
+      const pts = geomPts(a), closed = CLOSED.includes(a.type);
+      if (closed && a.fill) fillP(pts, a.fop == null ? 0.3 : a.fop);
+      strokeP(pts, closed);
+    }
+  }
+  ctx.restore();
+}
+function dispBBox(a, vp) {
+  const V = p => vp.convertToViewportPoint(p[0], p[1]);
+  if (a.type === 'text') { const m = textMetrics(a, vp.scale), P = V(a.pts[0]); return { x0: P[0], y0: P[1], x1: P[0] + m.w, y1: P[1] + m.h }; }
+  if (a.type === 'mcount') { const P = V(a.pts[0]), r = a.size * vp.scale * 0.75; return { x0: P[0] - r, y0: P[1] - r, x1: P[0] + r, y1: P[1] + r }; }
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  geomPts(a).map(V).forEach(q => { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); });
+  return { x0, y0, x1, y1 };
+}
+function distSeg(px, py, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+  let t = L2 ? ((px - a[0]) * dx + (py - a[1]) * dy) / L2 : 0; t = clamp(t, 0, 1);
+  return Math.hypot(px - a[0] - t * dx, py - a[1] - t * dy);
+}
+function hitTest(annots, vp, x, y) {
+  const tol = COARSE ? 14 : 7;
+  for (let k = annots.length - 1; k >= 0; k--) {
+    const a = annots[k];
+    if (a.type === 'pen' || a.type === 'line' || a.type === 'arrow' || a.type === 'mlen') {
+      const pts = a.pts.map(p => vp.convertToViewportPoint(p[0], p[1])), t = tol + a.w * vp.scale / 2;
+      if (pts.length === 1 && Math.hypot(x - pts[0][0], y - pts[0][1]) < t) return a;
+      for (let j = 1; j < pts.length; j++) if (distSeg(x, y, pts[j - 1], pts[j]) < t) return a;
+    } else {
+      const b = dispBBox(a, vp);
+      if (x >= b.x0 - tol && x <= b.x1 + tol && y >= b.y0 - tol && y <= b.y1 + tol) return a;
+    }
+  }
+  return null;
+}
+
+/* ---------- dữ liệu file / trang ---------- */
+const getDoc = id => S.docs.find(d => d.id === id) || null;
+const activePane = () => S.panes[S.active] || S.panes[0];
+const activeDoc = () => getDoc(activePane() && activePane().docId);
+function totalRot(en) { return ((S.sources[en.src].sizes[en.idx].rotate || 0) + en.rot) % 360; }
+function pageSize(en) { const z = S.sources[en.src].sizes[en.idx]; return totalRot(en) % 180 ? { w: z.h, h: z.w } : { w: z.w, h: z.h }; }
+function getProxy(src, idx) { return src.cache[idx] || (src.cache[idx] = src.pdf.getPage(idx + 1)); }
+
+async function loadPdf(bytes) {
+  const opts = { cMapUrl: PDFJS_BASE + 'cmaps/', cMapPacked: true, standardFontDataUrl: PDFJS_BASE + 'standard_fonts/' };
+  try { return await pdfjsLib.getDocument({ data: bytes.slice(), ...opts }).promise; }
+  catch (e) {
+    if (e && e.name === 'PasswordException') {
+      const pw = await cmdAsk('<b>MỞ FILE</b> › File có mật khẩu, nhập mật khẩu:', { type: 'password' });
+      if (pw === null) throw new Error('Đã hủy');
+      return await pdfjsLib.getDocument({ data: bytes.slice(), password: pw, ...opts }).promise;
+    }
+    throw e;
+  }
+}
+async function openFiles(files) {
+  const list = [...files].filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf');
+  if (!list.length) return toast('Chỉ mở được file PDF');
+  for (const f of list) {
+    try {
+      toast(`Đang mở ${f.name}…`, 0);
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      const pdf = await loadPdf(bytes);
+      const src = { id: newId(), name: f.name, bytes, pdf, cache: {}, sizes: [] };
+      for (let k = 0; k < pdf.numPages; k++) {
+        const pg = await getProxy(src, k), vp = pg.getViewport({ scale: 1, rotation: 0 });
+        src.sizes[k] = { w: vp.width, h: vp.height, rotate: pg.rotate || 0 };
+      }
+      S.sources[src.id] = src;
+      const doc = { id: newId(), name: f.name, pages: src.sizes.map((_, k) => ({ src: src.id, idx: k, rot: 0, annots: [] })), dirty: false };
+      S.docs.push(doc);
+      const p = S.panes.find(q => !q.docId) || activePane();
+      p.docId = doc.id; p.scale = null; p.curPage = 0;
+    } catch (err) { console.error(err); toast('Không mở được ' + f.name + ': ' + (err.message || err), 5000); }
+  }
+  toast('Đã mở xong'); mlSoon();
+  S.panes.forEach(p => buildPaneDoc(p, true));
+  refreshSidebar();
+}
+async function closeDoc(id) {
+  const doc = getDoc(id); if (!doc) return;
+  if (doc.dirty && !(await cmdConfirm(`<b>ĐÓNG FILE</b> › "${esc(doc.name)}" có thay đổi chưa lưu. Vẫn đóng?`, 'Đóng không lưu', 'Hủy'))) return;
+  S.docs = S.docs.filter(d => d !== doc);
+  S.undo = S.undo.filter(u => u.docId !== id); S.redo = S.redo.filter(u => u.docId !== id);
+  if (S.sel && S.sel.docId === id) S.sel = null;
+  S.panes.forEach(p => { if (p.docId === id) { p.docId = S.docs[0] ? S.docs[0].id : null; p.scale = null; p.curPage = 0; } buildPaneDoc(p, true); });
+  refreshSidebar(); updateSelUI(); mlSoon();
+}
+
+/* ---------- hoàn tác ---------- */
+function snap(doc) { return JSON.stringify(doc.pages); }
+function structKey(doc) { return doc.pages.map(e => e.src + ':' + e.idx + ':' + e.rot).join(','); }
+function commit(doc, before) {
+  S.undo.push({ docId: doc.id, json: before }); if (S.undo.length > 150) S.undo.shift();
+  S.redo = []; doc.dirty = true; updateDirty(); mlSoon(); propsSoon();
+}
+function applySnap(doc, json) {
+  const old = structKey(doc); doc.pages = JSON.parse(json); doc.dirty = true;
+  S.sel = null; updateSelUI();
+  if (old !== structKey(doc)) refreshDocViews(doc.id); else redrawDocAll(doc.id);
+  updateDirty(); mlSoon(); propsSoon();
+}
+function undo() {
+  const u = S.undo.pop(); if (!u) return toast('Không còn bước để hoàn tác');
+  const doc = getDoc(u.docId); if (!doc) return undo();
+  S.redo.push({ docId: doc.id, json: snap(doc) }); applySnap(doc, u.json);
+}
+function redo() {
+  const u = S.redo.pop(); if (!u) return toast('Không còn bước để làm lại');
+  const doc = getDoc(u.docId); if (!doc) return redo();
+  S.undo.push({ docId: doc.id, json: snap(doc) }); applySnap(doc, u.json);
+}
+
+/* ---------- ô xem (pane) ---------- */
+function newPane(docId) { return { docId: docId || null, scale: null, el: null, scroller: null, inner: null, sel: null, pageEls: [], visible: new Set(), obs: null, curPage: 0, _rt: 0, pinch: null, _sync: false, _raf: 0 }; }
+
+function renderLayout() {
+  const n = S.layout;
+  while (S.panes.length < n) { const d = S.docs[S.panes.length] || S.docs[0]; S.panes.push(newPane(d && d.id)); }
+  S.panes.slice(n).forEach(p => p.obs && p.obs.disconnect());
+  S.panes = S.panes.slice(0, n);
+  if (S.active >= n) S.active = 0;
+  const box = $('#panes'); box.innerHTML = ''; box.className = 'l' + n; applyToolClass();
+  S.panes.forEach(p => { createPaneDom(p); box.appendChild(p.el); });
+  S.panes.forEach(p => buildPaneDoc(p, true));
+  setActive(S.active);
+}
+function createPaneDom(p) {
+  const el = document.createElement('div'); el.className = 'pane';
+  el.innerHTML = `<div class="phead"><select class="dsel" title="Chọn file cho ô này"></select><span class="pinfo"></span>
+    <button data-a="zo" title="Thu nhỏ">−</button><span class="zl"></span><button data-a="zi" title="Phóng to">+</button>
+    <button data-a="fit" title="Vừa chiều rộng">↔</button><button data-a="close" title="Đóng file này">✕</button></div>
+    <div class="scroller"><div class="inner"></div></div>`;
+  p.el = el; p.scroller = el.querySelector('.scroller'); p.inner = el.querySelector('.inner'); p.sel = el.querySelector('.dsel');
+  el.addEventListener('pointerdown', () => setActive(S.panes.indexOf(p)), true);
+  p.sel.onchange = () => { p.docId = +p.sel.value || null; p.scale = null; p.curPage = 0; buildPaneDoc(p); if (S.panes[S.active] === p) refreshSidebar(); };
+  el.querySelector('.phead').addEventListener('click', e => {
+    const a = e.target.dataset && e.target.dataset.a; if (!a) return;
+    const d = getDoc(p.docId);
+    if (a === 'close') return closeDoc(p.docId);
+    if (!d) return;
+    if (a === 'zi') setScale(p, p.scale * 1.25);
+    else if (a === 'zo') setScale(p, p.scale / 1.25);
+    else if (a === 'fit') setScale(p, fitScale(p, d));
+  });
+  const sc = p.scroller;
+  sc.addEventListener('scroll', () => onScroll(p), { passive: true });
+  sc.addEventListener('wheel', e => {
+    if ((e.ctrlKey || e.metaKey) && getDoc(p.docId)) { e.preventDefault(); setScale(p, p.scale * Math.exp(-e.deltaY * 0.0015), { clientX: e.clientX, clientY: e.clientY, defer: true }); }
+  }, { passive: false });
+  // pinch zoom 2 ngón
+  const td = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  sc.addEventListener('touchstart', e => {
+    if (e.touches.length === 2 && getDoc(p.docId)) {
+      e.preventDefault(); cancelDrag();
+      p.pinch = { d0: td(e.touches) || 1, s0: p.scale };
+    }
+  }, { passive: false });
+  sc.addEventListener('touchmove', e => {
+    if (p.pinch && e.touches.length === 2) {
+      e.preventDefault();
+      const t = e.touches, cx = (t[0].clientX + t[1].clientX) / 2, cy = (t[0].clientY + t[1].clientY) / 2, s = p.pinch.s0 * td(t) / p.pinch.d0;
+      cancelAnimationFrame(p._raf);
+      p._raf = requestAnimationFrame(() => setScale(p, s, { clientX: cx, clientY: cy, defer: true }));
+    }
+  }, { passive: false });
+  const endPinch = e => { if (p.pinch && e.touches.length < 2) { p.pinch = null; scheduleRender(p, 0); } };
+  sc.addEventListener('touchend', endPinch); sc.addEventListener('touchcancel', endPinch);
+  p.inner.addEventListener('pointerdown', e => onDown(e, p));
+  p.inner.addEventListener('pointermove', e => onMove(e, p));
+  p.inner.addEventListener('pointerup', e => onUp(e, p));
+  p.inner.addEventListener('pointercancel', () => cancelDrag());
+  p.inner.addEventListener('dblclick', () => {
+    if (S.poly && S.poly.p === p) return finishPoly();
+    if (S.tool === 'select' && S.sel) { toggleSidebar(true); setTab('props'); }
+  });
+  p.inner.addEventListener('pointerleave', () => { if (S.tool === 'stamp' && p._stampPg != null) { drawOverlay(p, p._stampPg); p._stampPg = null; } });
+}
+function fillDocSelect(p) {
+  if (!p.sel) return;
+  p.sel.innerHTML = (S.docs.length ? '' : '<option value="">— chưa có file —</option>') +
+    S.docs.map(d => `<option value="${d.id}"${d.id === p.docId ? ' selected' : ''}>${d.dirty ? '● ' : ''}${esc(d.name)}</option>`).join('');
+}
+function updateDirty() { S.panes.forEach(fillDocSelect); }
+function setActive(k) {
+  if (k < 0) return;
+  const changed = S.active !== k; S.active = k;
+  S.panes.forEach((p, j) => p.el && p.el.classList.toggle('active', j === k && S.panes.length > 1));
+  if (changed) { refreshSidebar(); mlSoon(); }
+  updateReadInfo();
+}
+function fitScale(p, doc) {
+  const W = p.scroller.clientWidth - 24;
+  let mw = 1; for (const en of doc.pages) mw = Math.max(mw, pageSize(en).w);
+  return W > 50 ? clamp(W / mw, 0.05, 8) : 1;
+}
+function layoutSizes(p) {
+  const doc = getDoc(p.docId); if (!doc) return;
+  p.pageEls.forEach((el, i) => { const z = pageSize(doc.pages[i]); el.style.width = (z.w * p.scale) + 'px'; el.style.height = (z.h * p.scale) + 'px'; });
+  p.el.querySelector('.zl').textContent = Math.round(p.scale * 100) + '%';
+}
+function buildPaneDoc(p, keep) {
+  if (!p.inner) return;
+  if (p.obs) p.obs.disconnect();
+  p.pageEls.forEach(cancelTask);
+  p.inner.innerHTML = ''; p.pageEls = []; p.visible.clear(); fillDocSelect(p);
+  const doc = getDoc(p.docId);
+  if (!doc) {
+    p.inner.innerHTML = '<div class="empty">📂 Bấm <b>Mở</b> để mở file PDF<br><small>Mở nhiều file cùng lúc được, hoặc kéo thả file vào đây</small></div>';
+    p.el.querySelector('.pinfo').textContent = ''; p.el.querySelector('.zl').textContent = ''; return;
+  }
+  if (!p.scale) p.scale = fitScale(p, doc);
+  const frag = document.createDocumentFragment();
+  doc.pages.forEach((en, i) => {
+    const el = document.createElement('div'); el.className = 'page'; el.dataset.i = i;
+    el.innerHTML = '<canvas class="pdfc"></canvas><canvas class="ov"></canvas>';
+    frag.appendChild(el); p.pageEls.push(el);
+  });
+  p.inner.appendChild(frag); layoutSizes(p);
+  p.obs = new IntersectionObserver(ents => {
+    for (const en of ents) {
+      const i = +en.target.dataset.i;
+      if (en.isIntersecting) { p.visible.add(i); if (!p.pinch) renderPage(p, i); }
+      else { p.visible.delete(i); freePage(en.target); }
+    }
+  }, { root: p.scroller, rootMargin: '400px' });
+  p.pageEls.forEach(el => p.obs.observe(el));
+  if (keep && p.curPage) scrollToPage(p, Math.min(p.curPage, doc.pages.length - 1)); else p.scroller.scrollTop = 0;
+  updateInfo(p);
+}
+function cancelTask(el) { if (el._task) { try { el._task.cancel(); } catch (e) {} el._task = null; } }
+function freePage(el) {
+  cancelTask(el);
+  const c = el.querySelector('.pdfc'), n = document.createElement('canvas'); n.className = 'pdfc'; c.replaceWith(n);
+  const ov = el.querySelector('.ov'); ov.width = ov.height = 0;
+  el._scale = null; el._vp = null;
+}
+async function renderPage(p, i) {
+  const el = p.pageEls[i], doc = getDoc(p.docId);
+  if (!el || !doc) return;
+  const scale = p.scale;
+  if (el._scale === scale) return;
+  el._scale = scale; cancelTask(el);
+  const en = doc.pages[i], src = S.sources[en.src];
+  let pg; try { pg = await getProxy(src, en.idx); } catch (e) { return; }
+  if (el._scale !== scale || p.pageEls[i] !== el) return;
+  const vp = pg.getViewport({ scale, rotation: totalRot(en) });
+  el._vp = vp;
+  let pr = Math.min(window.devicePixelRatio || 1, 3);
+  const area = vp.width * vp.height, MAX = COARSE ? 8e6 : 16e6;
+  if (area * pr * pr > MAX) pr = Math.sqrt(MAX / area);
+  const ov = el.querySelector('.ov');
+  el._opr = Math.min(pr, 2);
+  ov.width = Math.max(1, Math.round(vp.width * el._opr)); ov.height = Math.max(1, Math.round(vp.height * el._opr));
+  drawOverlay(p, i);
+  const off = document.createElement('canvas'); off.className = 'pdfc';
+  off.width = Math.max(1, Math.floor(vp.width * pr)); off.height = Math.max(1, Math.floor(vp.height * pr));
+  const task = pg.render({ canvasContext: off.getContext('2d'), viewport: vp, transform: [pr, 0, 0, pr, 0, 0] });
+  el._task = task;
+  try { await task.promise; } catch (e) { return; }
+  if (el._task !== task) return;
+  el._task = null;
+  if (el._scale !== scale) return;
+  el.querySelector('.pdfc').replaceWith(off);
+}
+function scheduleRender(p, delay) {
+  clearTimeout(p._rt);
+  p._rt = setTimeout(() => [...p.visible].forEach(i => renderPage(p, i)), delay);
+}
+function setScale(p, s, opts = {}) {
+  const doc = getDoc(p.docId); if (!doc || !p.scale) return;
+  s = clamp(s, 0.05, 8); if (Math.abs(s - p.scale) < 1e-4) return;
+  const sc = p.scroller, r = sc.getBoundingClientRect();
+  const px = opts.clientX != null ? opts.clientX - r.left : sc.clientWidth / 2;
+  const py = opts.clientY != null ? opts.clientY - r.top : sc.clientHeight / 2;
+  const fx = (sc.scrollLeft + px) / sc.scrollWidth, fy = (sc.scrollTop + py) / sc.scrollHeight;
+  p.scale = s; layoutSizes(p);
+  p._sync = true;
+  sc.scrollLeft = fx * sc.scrollWidth - px; sc.scrollTop = fy * sc.scrollHeight - py;
+  requestAnimationFrame(() => requestAnimationFrame(() => { p._sync = false; }));
+  scheduleRender(p, opts.defer ? 200 : 0);
+  if (S.sync && !opts.fromSync) { S.panes.forEach(o => { if (o !== p) setScale(o, s, { fromSync: true, defer: opts.defer }); }); syncFrom(p); }
+}
+function scrollToPage(p, i) { const el = p.pageEls[i]; if (el) p.scroller.scrollTop = el.offsetTop - 6; }
+function currentPageOf(p) {
+  const st = p.scroller.scrollTop + p.scroller.clientHeight * 0.3; let cur = 0;
+  for (let k = 0; k < p.pageEls.length; k++) { if (p.pageEls[k].offsetTop <= st) cur = k; else break; }
+  return cur;
+}
+function updateInfo(p) {
+  const doc = getDoc(p.docId); if (!doc || !p.el) return;
+  const oldPg = p.curPage; p.curPage = currentPageOf(p);
+  if (oldPg !== p.curPage && p === activePane() && $('#mlFilter').value === 'page') mlSoon();
+  p.el.querySelector('.pinfo').textContent = `${p.curPage + 1}/${doc.pages.length}`;
+  if (p === activePane()) { updateReadInfo(); updateScaleLbl(); }
+}
+function updateReadInfo() {
+  const p = activePane(), doc = p && getDoc(p.docId);
+  $('#rInfo').textContent = doc ? `${p.curPage + 1} / ${doc.pages.length}` : '';
+}
+function onScroll(p) {
+  if (p._sraf) return;
+  p._sraf = requestAnimationFrame(() => { p._sraf = 0; updateInfo(p); if (!p._sync) syncFrom(p); });
+}
+function syncFrom(p) {
+  if (!S.sync || !p.pageEls.length) return;
+  const st = p.scroller.scrollTop; let k = 0;
+  for (let j = 0; j < p.pageEls.length; j++) { if (p.pageEls[j].offsetTop <= st) k = j; else break; }
+  const e1 = p.pageEls[k], frac = (st - e1.offsetTop) / (e1.offsetHeight || 1);
+  const sw = p.scroller.scrollWidth - p.scroller.clientWidth, fx = sw > 0 ? p.scroller.scrollLeft / sw : 0;
+  S.panes.forEach(o => {
+    if (o === p || !o.pageEls.length) return;
+    const e2 = o.pageEls[Math.min(k, o.pageEls.length - 1)];
+    o._sync = true;
+    o.scroller.scrollTop = e2.offsetTop + frac * e2.offsetHeight;
+    o.scroller.scrollLeft = fx * (o.scroller.scrollWidth - o.scroller.clientWidth);
+    requestAnimationFrame(() => requestAnimationFrame(() => { o._sync = false; }));
+  });
+}
+
+/* ---------- lớp markup ---------- */
+function drawOverlay(p, i, temp) {
+  const el = p.pageEls[i], doc = getDoc(p.docId);
+  if (!el || !el._vp || !doc) return;
+  const ov = el.querySelector('.ov'), ctx = ov.getContext('2d'), vp = el._vp;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, ov.width, ov.height);
+  ctx.setTransform(el._opr, 0, 0, el._opr, 0, 0);
+  const en = doc.pages[i];
+  en.annots.forEach(a => drawAnnot(ctx, vp, a, en));
+  if (temp) {
+    if (temp._box) {
+      const b = temp._box; ctx.save(); ctx.setLineDash([4, 3]); ctx.strokeStyle = '#2563eb'; ctx.fillStyle = 'rgba(37,99,235,.08)'; ctx.lineWidth = 1;
+      ctx.fillRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0); ctx.strokeRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0); ctx.restore();
+    } else (Array.isArray(temp) ? temp : [temp]).forEach(t => drawAnnot(ctx, vp, t, en));
+  }
+  if (S.sel && S.sel.docId === doc.id && S.sel.i === i) {
+    const sel = en.annots.filter(x => S.sel.ids.includes(x.id));
+    let U = null;
+    ctx.save(); ctx.setLineDash([5, 4]); ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 1.5;
+    sel.forEach(a => {
+      const b = dispBBox(a, vp);
+      ctx.strokeRect(b.x0 - 5, b.y0 - 5, b.x1 - b.x0 + 10, b.y1 - b.y0 + 10);
+      U = U ? { x0: Math.min(U.x0, b.x0), y0: Math.min(U.y0, b.y0), x1: Math.max(U.x1, b.x1), y1: Math.max(U.y1, b.y1) } : { ...b };
+    });
+    if (U && sel.length > 1) { ctx.strokeStyle = '#9333ea'; ctx.setLineDash([2, 3]); ctx.strokeRect(U.x0 - 10, U.y0 - 10, U.x1 - U.x0 + 20, U.y1 - U.y0 + 20); }
+    ctx.restore();
+  }
+}
+function redrawDocPage(docId, i) { S.panes.forEach(p => { if (p.docId === docId) drawOverlay(p, i); }); }
+function redrawDocAll(docId) { S.panes.forEach(p => { if (p.docId === docId) p.visible.forEach(i => drawOverlay(p, i)); }); }
+function refreshDocViews(docId) {
+  S.panes.forEach(p => { if (p.docId === docId) buildPaneDoc(p, true); });
+  const d = activeDoc(); if (d && d.id === docId) { refreshSidebar(); mlSoon(); }
+}
+function setSel(sel) {
+  if (sel && (!sel.ids || !sel.ids.length)) sel = null;
+  const old = S.sel; S.sel = sel;
+  if (old) redrawDocPage(old.docId, old.i);
+  if (sel) redrawDocPage(sel.docId, sel.i);
+  updateSelUI(); mlMarkSel(); propsSoon();
+}
+function selAnnots() {
+  const s = S.sel; if (!s) return [];
+  const d = getDoc(s.docId); if (!d || !d.pages[s.i]) return [];
+  return d.pages[s.i].annots.filter(a => s.ids.includes(a.id));
+}
+function groupIds(en, a) { return a.g ? en.annots.filter(x => x.g === a.g).map(x => x.id) : [a.id]; }
+function isSelected(docId, i, id) { return !!(S.sel && S.sel.docId === docId && S.sel.i === i && S.sel.ids.includes(id)); }
+function updateSelUI() {
+  $('#bDel').disabled = !S.sel;
+  $('#panes').classList.toggle('grab', !!S.sel && S.tool === 'select');
+}
+function editSel(fn, filter) {
+  const s = S.sel, doc = s && getDoc(s.docId); if (!doc) return;
+  const list = selAnnots().filter(filter || (() => true)); if (!list.length) return;
+  const before = snap(doc);
+  list.forEach(fn);
+  commit(doc, before); redrawDocPage(doc.id, s.i);
+}
+function delSel() {
+  const s = S.sel, doc = s && getDoc(s.docId); if (!doc) return;
+  const before = snap(doc), en = doc.pages[s.i];
+  en.annots = en.annots.filter(a => !s.ids.includes(a.id));
+  S.sel = null; commit(doc, before); redrawDocPage(doc.id, s.i); updateSelUI(); propsSoon();
+}
+function groupSel(on) {
+  const s = S.sel; if (!s) return;
+  if (on && s.ids.length < 2) return toast('Chọn từ 2 markup trở lên để Group (Shift+click hoặc kéo khung)');
+  const g = on ? newId() : null;
+  editSel(a => { if (g) a.g = g; else delete a.g; });
+  toast(on ? `Đã group ${s.ids.length} markup` : 'Đã bỏ group');
+  propsSoon();
+}
+function selectAllPage() {
+  const p = activePane(), doc = activeDoc(); if (!doc) return;
+  const en = doc.pages[p.curPage]; if (!en.annots.length) return toast('Trang này chưa có markup');
+  if (S.tool !== 'select') setTool('select');
+  setSel({ docId: doc.id, i: p.curPage, ids: en.annots.map(a => a.id) });
+}
+
+/* ---------- thao tác chuột / cảm ứng ---------- */
+function locateIn(el, e) {
+  const vp = el._vp; if (!vp) return null;
+  const r = el.getBoundingClientRect();
+  const x = (e.clientX - r.left) * (vp.width / r.width), y = (e.clientY - r.top) * (vp.height / r.height);
+  return { el, i: +el.dataset.i, x, y, vp, pdf: vp.convertToPdfPoint(x, y) };
+}
+function cancelDrag() {
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (d.mode === 'move') { const o = JSON.parse(d.orig); d.items.forEach((a, k) => { a.pts = o[k]; }); redrawDocPage(d.doc.id, d.i); }
+  else drawOverlay(d.p, d.i);
+}
+function onDown(e, p) {
+  if (e.button > 0 || p.pinch) return;
+  if (e.pointerType === 'touch' && touchPtrs.size > 1) { cancelDrag(); return; }
+  const el = e.target.closest && e.target.closest('.page'); if (!el) return;
+  const L = locateIn(el, e); if (!L) return;
+  const doc = getDoc(p.docId); if (!doc) return;
+  const en = doc.pages[L.i];
+  if (S.tool === 'select') {
+    const hit = hitTest(en.annots, L.vp, L.x, L.y), add = e.shiftKey || e.ctrlKey || e.metaKey || S.multi;
+    const samePage = S.sel && S.sel.docId === doc.id && S.sel.i === L.i;
+    if (hit) {
+      const ids = groupIds(en, hit);
+      if (add && samePage) {
+        const cur = new Set(S.sel.ids), allIn = ids.every(x => cur.has(x));
+        ids.forEach(x => allIn ? cur.delete(x) : cur.add(x));
+        setSel({ docId: doc.id, i: L.i, ids: [...cur] });
+        if (allIn) return;
+      } else if (!(samePage && ids.every(x => S.sel.ids.includes(x)))) setSel({ docId: doc.id, i: L.i, ids });
+      const items = selAnnots();
+      drag = { mode: 'move', p, el, i: L.i, doc, items, start: L.pdf, orig: JSON.stringify(items.map(a => a.pts)), before: snap(doc), moved: false, pid: e.pointerId };
+      try { e.target.setPointerCapture(e.pointerId); } catch (x) {}
+      e.preventDefault();
+    } else {
+      if (!add && S.sel) setSel(null);
+      if (e.pointerType !== 'touch') {
+        drag = { mode: 'box', p, el, i: L.i, doc, sx: L.x, sy: L.y, x: L.x, y: L.y, add, pid: e.pointerId };
+        try { e.target.setPointerCapture(e.pointerId); } catch (x) {}
+        e.preventDefault();
+      }
+    }
+    return;
+  }
+  if (S.tool === 'stamp') {
+    e.preventDefault();
+    if (!S.stamp) return setTool('select');
+    placeItems(doc, L.i, L.pdf, S.stamp.items, L.vp.scale);
+    return;
+  }
+  if (S.tool === 'text') {
+    const hit = hitTest(en.annots.filter(a => a.type === 'text'), L.vp, L.x, L.y);
+    setTimeout(() => textAt(doc, L.i, L.pdf, hit, L.vp.scale), 30);
+    return;
+  }
+  if (S.tool === 'marea') {
+    e.preventDefault();
+    if (S.poly && (S.poly.p !== p || S.poly.i !== L.i)) finishPoly();
+    if ((S.tool === 'marea') && !en.scale) toast('Trang này chưa có tỷ lệ, bấm ⚖️ Tỷ lệ để đặt', 2600);
+    if (!S.poly) {
+      const sc0 = L.vp.scale;
+      S.poly = { p, el, i: L.i, doc, a: { id: newId(), type: 'marea', color: S.color, w: S.width / sc0, size: (10 + S.width * 3) / sc0, pts: [L.pdf], note: '', status: 'open', author: S.author, created: Date.now() } };
+    } else {
+      const a = S.poly.a, f = L.vp.convertToViewportPoint(...a.pts[0]), l = L.vp.convertToViewportPoint(...a.pts[a.pts.length - 1]);
+      if (a.pts.length >= 3 && Math.hypot(L.x - f[0], L.y - f[1]) < (COARSE ? 20 : 10)) { finishPoly(); return; }
+      if (Math.hypot(L.x - l[0], L.y - l[1]) > 2) a.pts.push(L.pdf);
+    }
+    S.poly.hover = null; drawOverlay(p, L.i, S.poly.a);
+    return;
+  }
+  if (S.tool === 'mcount') {
+    e.preventDefault();
+    let n = 0; doc.pages.forEach(pg => pg.annots.forEach(x => { if (x.type === 'mcount') n = Math.max(n, x.n || 0); }));
+    const before = snap(doc), sc0 = L.vp.scale;
+    en.annots.push({ id: newId(), type: 'mcount', n: n + 1, color: S.color, w: 0, size: (10 + S.width * 3) / sc0, pts: [L.pdf], note: '', status: 'open', author: S.author, created: Date.now() });
+    commit(doc, before); redrawDocPage(doc.id, L.i);
+    return;
+  }
+  if (S.tool === 'mlen' && !en.scale) toast('Trang này chưa có tỷ lệ, bấm ⚖️ Tỷ lệ để đặt', 2600);
+  e.preventDefault();
+  try { e.target.setPointerCapture(e.pointerId); } catch (x) {}
+  const sc = L.vp.scale;
+  const a = { id: newId(), type: S.tool, color: S.tool === 'highlight' ? HL : S.color, w: S.tool === 'highlight' ? 0 : S.width / sc, arc: 14 / sc,
+    size: (10 + S.width * 3) / sc,
+    pts: S.tool === 'pen' ? [L.pdf] : [L.pdf, L.pdf], note: '', status: 'open', author: S.author, created: Date.now() };
+  drag = { mode: 'draw', p, el, i: L.i, doc, a, pid: e.pointerId, sx: L.x, sy: L.y, far: false };
+}
+function onMove(e, p) {
+  if (S.tool === 'stamp' && S.stamp && !drag && e.pointerType !== 'touch') {
+    const el = e.target.closest && e.target.closest('.page'); if (!el) return;
+    const L = locateIn(el, e); if (!L) return;
+    if (p._stampPg != null && p._stampPg !== L.i) drawOverlay(p, p._stampPg);
+    p._stampPg = L.i;
+    drawOverlay(p, L.i, instantiate(S.stamp.items, L.pdf, null, true));
+    return;
+  }
+  if (S.poly && S.poly.p === p && !drag && e.pointerType !== 'touch') {
+    const L = locateIn(S.poly.el, e); if (!L) return;
+    const a = S.poly.a; drawOverlay(p, S.poly.i, { ...a, pts: a.pts.concat([L.pdf]) });
+    return;
+  }
+  if (!drag || drag.p !== p || e.pointerId !== drag.pid) return;
+  const L = locateIn(drag.el, e); if (!L) return;
+  if (drag.mode === 'draw') {
+    const a = drag.a;
+    if (Math.hypot(L.x - drag.sx, L.y - drag.sy) > 3) drag.far = true;
+    if (a.type === 'pen') {
+      const last = L.vp.convertToViewportPoint(...a.pts[a.pts.length - 1]);
+      if (Math.hypot(last[0] - L.x, last[1] - L.y) >= 2) a.pts.push(L.pdf);
+    } else a.pts[1] = L.pdf;
+    drawOverlay(p, drag.i, a);
+  } else if (drag.mode === 'box') {
+    drag.x = L.x; drag.y = L.y;
+    drawOverlay(p, drag.i, { _box: { x0: Math.min(drag.sx, L.x), y0: Math.min(drag.sy, L.y), x1: Math.max(drag.sx, L.x), y1: Math.max(drag.sy, L.y) } });
+  } else {
+    const dx = L.pdf[0] - drag.start[0], dy = L.pdf[1] - drag.start[1], o = JSON.parse(drag.orig);
+    drag.items.forEach((a, k) => { a.pts = o[k].map(q => [q[0] + dx, q[1] + dy]); });
+    drag.moved = true; redrawDocPage(drag.doc.id, drag.i);
+  }
+}
+function onUp(e, p) {
+  if (!drag || drag.p !== p || e.pointerId !== drag.pid) return;
+  const d = drag; drag = null;
+  if (d.mode === 'draw') {
+    if (!d.far && d.a.type !== 'pen') { drawOverlay(p, d.i); return; }
+    if (d.a.type === 'calib') { CMD.onCancel = null; setTimeout(() => calibrate(d.doc, d.i, d.a), 30); return; }
+    const before = snap(d.doc);
+    d.doc.pages[d.i].annots.push(d.a);
+    commit(d.doc, before); redrawDocPage(d.doc.id, d.i);
+  } else if (d.mode === 'box') {
+    const b = { x0: Math.min(d.sx, d.x), y0: Math.min(d.sy, d.y), x1: Math.max(d.sx, d.x), y1: Math.max(d.sy, d.y) };
+    drawOverlay(p, d.i);
+    if (b.x1 - b.x0 < 4 && b.y1 - b.y0 < 4) return;
+    const en = d.doc.pages[d.i], vp = d.el._vp, ids = new Set(d.add && S.sel && S.sel.docId === d.doc.id && S.sel.i === d.i ? S.sel.ids : []);
+    en.annots.forEach(a => { const q = dispBBox(a, vp); if (q.x0 >= b.x0 && q.y0 >= b.y0 && q.x1 <= b.x1 && q.y1 <= b.y1) groupIds(en, a).forEach(x => ids.add(x)); });
+    setSel(ids.size ? { docId: d.doc.id, i: d.i, ids: [...ids] } : null);
+  } else if (d.moved) { commit(d.doc, d.before); propsSoon(); }
+}
+function finishPoly(cancel) {
+  const P = S.poly; if (!P) return;
+  S.poly = null;
+  const a = P.a;
+  if (!cancel && a.pts.length >= 3) {
+    const before = snap(P.doc);
+    P.doc.pages[P.i].annots.push(a);
+    commit(P.doc, before);
+  } else if (!cancel) toast('Diện tích cần ít nhất 3 điểm');
+  redrawDocPage(P.doc.id, P.i);
+}
+function parseLen(str) {
+  const m = String(str).trim().replace(',', '.').match(/^([\d.]+)\s*(mm|cm|m)?$/i);
+  if (!m || !(+m[1] > 0)) return null;
+  const u = (m[2] || 'm').toLowerCase();
+  return { m: +m[1] * (u === 'mm' ? 0.001 : u === 'cm' ? 0.01 : 1), unit: u === 'mm' ? 'mm' : 'm' };
+}
+async function applyScale(doc, i, sc) {
+  let all = false;
+  if (doc.pages.length > 1) {
+    const v = await cmdChoose(`<b>HIỆU CHỈNH</b> › Tỷ lệ ≈ ${ratioTxt(sc)}. Áp dụng cho:`, [{ l: `Trang ${i + 1}`, v: 'one' }, { l: `Tất cả ${doc.pages.length} trang`, v: 'all' }]);
+    if (v === null) return toast('Đã hủy hiệu chỉnh');
+    all = v === 'all';
+  }
+  const before = snap(doc);
+  (all ? doc.pages : [doc.pages[i]]).forEach(en => { en.scale = { ...sc }; });
+  commit(doc, before); redrawDocAll(doc.id); updateScaleLbl();
+  toast(`Đã đặt tỷ lệ ≈ ${ratioTxt(sc)} cho ${all ? 'tất cả trang' : 'trang ' + (i + 1)}`, 3000);
+}
+async function calibrate(doc, i, a) {
+  const lenPt = polyLen(a.pts);
+  const p = S.panes.find(q => q.docId === doc.id && q.pageEls[i]);
+  if (p) drawOverlay(p, i, a);           // giữ đoạn vừa vẽ trên màn hình trong lúc nhập
+  setTool('select');
+  let err = '';
+  while (true) {
+    const r = await cmdAsk('<b>HIỆU CHỈNH</b> › Nhập chiều dài THỰC của đoạn vừa vẽ:', { placeholder: 'vd: 6000 mm · 6 m · 600 cm (không ghi đơn vị = m)', err });
+    if (r === null) { redrawDocPage(doc.id, i); return toast('Đã hủy hiệu chỉnh'); }
+    const v = parseLen(r);
+    if (v && lenPt > 0) { await applyScale(doc, i, { f: v.m / lenPt, unit: v.unit }); break; }
+    err = '✗ Không hiểu "' + r + '". Nhập số kèm đơn vị, vd 6000 mm';
+  }
+  redrawDocPage(doc.id, i);
+}
+function scaleDialog() {
+  const p = activePane(), doc = activeDoc(); if (!doc) return toast('Chưa có file');
+  const en = doc.pages[p.curPage], cur = en.scale ? `hiện tại ≈ ${ratioTxt(en.scale)}` : 'trang này chưa có tỷ lệ';
+  setTool('calib');
+  cmdInfo(`<b>HIỆU CHỈNH</b> (${cur}) › Kéo một đoạn có chiều dài đã biết trên bản vẽ, vd 1 nhịp trục. Esc để hủy.`, () => { if (S.tool === 'calib') setTool('select'); });
+}
+function updateScaleLbl() {
+  const p = activePane(), doc = p && getDoc(p.docId), en = doc && doc.pages[p.curPage];
+  $('#bScale').innerHTML = '⚖️<span class="lbl">' + (en && en.scale ? '≈ ' + ratioTxt(en.scale) : 'Tỷ lệ') + '</span>';
+}
+async function textAt(doc, i, pdf, hit, sc) {
+  const en = doc.pages[i]; if (!en) return;
+  if (hit) {
+    const t = await cmdAsk('<b>SỬA CHỮ</b> › (xóa hết chữ = xóa ghi chú):', { value: hit.text });
+    if (t === null) return;
+    const before = snap(doc);
+    if (!t.trim()) en.annots = en.annots.filter(a => a !== hit); else hit.text = t;
+    commit(doc, before); redrawDocPage(doc.id, i); return;
+  }
+  const t = await cmdAsk(`<b>CHỮ</b> › Nhập ghi chú tại trang ${i + 1}:`);
+  if (!t || !t.trim()) return;
+  const before = snap(doc);
+  en.annots.push({ id: newId(), type: 'text', color: S.color, w: 0, size: (10 + S.width * 3) / sc, text: t, pts: [pdf], note: '', status: 'open', author: S.author, created: Date.now() });
+  commit(doc, before); redrawDocPage(doc.id, i);
+}
+
+/* ---------- công cụ / màu / nét ---------- */
+function applyToolClass() {
+  const box = $('#panes');
+  box.classList.toggle('drawing', S.tool !== 'select' && S.tool !== 'text');
+  box.classList.toggle('texting', S.tool === 'text');
+}
+function setTool(t) {
+  if (!t || !TOOLS.some(x => x.t === t)) return;
+  if (S.poly && t !== 'marea') finishPoly();
+  if ((S.tool === 'calib' || S.tool === 'stamp') && t !== S.tool && CMD.onCancel) cmdHide();
+  if (S.tool === 'stamp' && t !== 'stamp') { S.stamp = null; S.panes.forEach(q => { if (q._stampPg != null) { drawOverlay(q, q._stampPg); q._stampPg = null; } }); renderChest(); }
+  S.tool = t;
+  document.querySelectorAll('#tools button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  if (t !== 'select' && S.sel) setSel(null);
+  applyToolClass(); updateSelUI();
+}
+function buildToolbar() {
+  $('#tools').innerHTML = TOOLS.filter(x => !x.hidden).map(x => `<button data-t="${x.t}" title="${x.l} (${x.k.toUpperCase()})">${x.i}<span class="lbl">${x.l}</span></button>`).join('');
+  $('#tools').onclick = e => { const b = e.target.closest('button[data-t]'); if (b) setTool(b.dataset.t); };
+  $('#tools').insertAdjacentHTML('beforeend', '<span class="sep"></span><button id="bScale" title="Đặt tỷ lệ / hiệu chỉnh đo đạc">⚖️<span class="lbl">Tỷ lệ</span></button>');
+  $('#bScale').onclick = scaleDialog;
+  $('#colors').innerHTML = COLORS.map(c => `<button class="sw${c === S.color ? ' on' : ''}" data-c="${c}" style="background:${c}" title="Màu"></button>`).join('');
+  $('#colors').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    S.color = b.dataset.c;
+    document.querySelectorAll('#colors .sw').forEach(x => x.classList.toggle('on', x === b));
+    editSel(a => { a.color = S.color; }, a => a.type !== 'highlight');
+  };
+  $('#wsel').onchange = e => {
+    S.width = +e.target.value;
+    const sc = activePane().scale || 1;
+    editSel(a => { if (a.type === 'text' || a.type === 'mcount') a.size = (10 + S.width * 3) / sc; else a.w = S.width / sc; }, a => a.type !== 'highlight');
+  };
+}
+
+/* ---------- quản lý trang ---------- */
+function toggleSidebar(on) {
+  const sb = $('#sidebar'); sb.hidden = on === undefined ? !sb.hidden : !on;
+  $('#bPages').classList.toggle('on', !sb.hidden);
+  setTab(S.tab);
+}
+function setTab(t) {
+  S.tab = t;
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  $('#tabPages').hidden = t !== 'pages'; $('#tabProps').hidden = t !== 'props'; $('#tabChest').hidden = t !== 'chest';
+  if (t === 'pages') refreshSidebar(); else if (t === 'props') renderProps(); else renderChest();
+}
+function refreshSidebar() {
+  const sb = $('#sidebar'); if (sb.hidden) return;
+  if (S.tab !== 'pages') { if (S.tab === 'props') propsSoon(); return; }
+  const doc = activeDoc(), list = $('#thumbs');
+  if (sb._obs) sb._obs.disconnect();
+  list.innerHTML = '';
+  $('#sbTitle').textContent = doc ? doc.name : 'Chưa có file';
+  const prev = $('#insSrc').value;
+  $('#insSrc').innerHTML = S.docs.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
+  if (prev && getDoc(+prev)) $('#insSrc').value = prev;
+  if (!doc) return;
+  sb._obs = new IntersectionObserver(ents => ents.forEach(en => {
+    if (en.isIntersecting && !en.target._r) { en.target._r = 1; thumbRender(doc, +en.target.dataset.i, en.target.querySelector('canvas')); }
+  }), { root: list, rootMargin: '200px' });
+  doc.pages.forEach((en, i) => {
+    const d = document.createElement('div'); d.className = 'th'; d.dataset.i = i;
+    d.innerHTML = `<canvas></canvas><div class="thbar"><b>${i + 1}</b><span>
+      <button data-t="up" title="Đưa lên">↑</button><button data-t="down" title="Đưa xuống">↓</button>
+      <button data-t="rot" title="Xoay 90°">⟳</button><button data-t="dup" title="Nhân bản trang">⧉</button>
+      <button data-t="del" title="Xóa trang">🗑</button></span></div>`;
+    list.appendChild(d); sb._obs.observe(d);
+  });
+}
+async function thumbRender(doc, i, cv) {
+  try {
+    const c = await renderFlat(doc, i, 200);
+    cv.width = c.width; cv.height = c.height; cv.getContext('2d').drawImage(c, 0, 0);
+  } catch (e) { console.warn(e); }
+}
+async function renderFlat(doc, i, longPx) {
+  const en = doc.pages[i], src = S.sources[en.src], pg = await getProxy(src, en.idx), rot = totalRot(en);
+  const v1 = pg.getViewport({ scale: 1, rotation: rot }), sc = longPx / Math.max(v1.width, v1.height);
+  const vp = pg.getViewport({ scale: sc, rotation: rot });
+  const c = document.createElement('canvas'); c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+  await pg.render({ canvasContext: ctx, viewport: vp }).promise;
+  en.annots.forEach(a => drawAnnot(ctx, vp, a, en));
+  return c;
+}
+function clonePages(pages) {
+  return pages.map(pg => { const c = JSON.parse(JSON.stringify(pg)); c.annots.forEach(a => { a.id = newId(); }); return c; });
+}
+async function onThumbClick(e) {
+  const th = e.target.closest('.th'); if (!th) return;
+  const i = +th.dataset.i, t = e.target.dataset.t, doc = activeDoc(); if (!doc) return;
+  if (!t) { scrollToPage(activePane(), i); if (innerWidth <= 700) toggleSidebar(false); return; }
+  if (t === 'del') {
+    if (doc.pages.length <= 1) return toast('Phải còn ít nhất 1 trang');
+    if (!(await cmdConfirm(`<b>XÓA TRANG</b> › Xóa trang ${i + 1} của "${esc(doc.name)}"?`, 'Xóa', 'Hủy'))) return;
+  }
+  const P = doc.pages, before = snap(doc);
+  if (t === 'up') { if (i === 0) return; [P[i - 1], P[i]] = [P[i], P[i - 1]]; }
+  else if (t === 'down') { if (i >= P.length - 1) return; [P[i + 1], P[i]] = [P[i], P[i + 1]]; }
+  else if (t === 'rot') P[i].rot = (P[i].rot + 90) % 360;
+  else if (t === 'dup') P.splice(i + 1, 0, ...clonePages([P[i]]));
+  else if (t === 'del') P.splice(i, 1);
+  S.sel = null; updateSelUI(); commit(doc, before); refreshDocViews(doc.id);
+}
+function insertPages() {
+  const doc = activeDoc(); if (!doc) return toast('Chưa có file đang xem');
+  const from = getDoc(+$('#insSrc').value); if (!from) return toast('Chọn file nguồn');
+  const idxs = parseRange($('#insRange').value, from.pages.length); if (!idxs || !idxs.length) return toast('Khoảng trang không hợp lệ');
+  const clones = clonePages(idxs.map(k => from.pages[k]));
+  const pos = $('#insPos').value, p = activePane();
+  const at = pos === 'start' ? 0 : pos === 'end' ? doc.pages.length : Math.min(p.curPage + 1, doc.pages.length);
+  const before = snap(doc);
+  doc.pages.splice(at, 0, ...clones);
+  commit(doc, before); refreshDocViews(doc.id);
+  toast(`Đã chèn ${clones.length} trang từ "${from.name}"`);
+}
+function splitToNew() {
+  const from = getDoc(+$('#insSrc').value); if (!from) return toast('Chọn file nguồn');
+  const idxs = parseRange($('#insRange').value, from.pages.length); if (!idxs || !idxs.length) return toast('Khoảng trang không hợp lệ');
+  const doc = { id: newId(), name: from.name.replace(/\.pdf$/i, '') + '_trich.pdf', pages: clonePages(idxs.map(k => from.pages[k])), dirty: true };
+  S.docs.push(doc);
+  const p = activePane(); p.docId = doc.id; p.scale = null; p.curPage = 0;
+  S.panes.forEach(q => buildPaneDoc(q, true)); refreshSidebar();
+  toast(`Đã tạo file mới ${idxs.length} trang. Bấm 💾 Lưu để tải về.`, 3500);
+}
+
+/* ---------- lưu PDF ---------- */
+function hexRgb(h) { const n = parseInt(h.slice(1), 16); return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255); }
+function textImage(a) {
+  const K = 4, fs = a.size * K, c = document.createElement('canvas'), ctx = c.getContext('2d');
+  ctx.font = FONT(fs);
+  const lines = String(a.text).split('\n');
+  const w = Math.ceil(Math.max(1, ...lines.map(l => ctx.measureText(l).width))) + 4, lh = fs * 1.25;
+  c.width = w; c.height = Math.ceil(lh * lines.length);
+  ctx.font = FONT(fs); ctx.fillStyle = a.color; ctx.textBaseline = 'top';
+  lines.forEach((l, k) => ctx.fillText(l, 0, k * lh + fs * 0.1));
+  return { url: c.toDataURL('image/png'), w: c.width / K, h: c.height / K };
+}
+async function labelPdf(out, pg, vp1, rot, C, txt, fs, color, bg, op = 1) {
+  const K = 4, c = document.createElement('canvas'), ctx = c.getContext('2d');
+  ctx.font = FONT(fs * K);
+  const w = ctx.measureText(txt).width + 6 * K, h = fs * 1.3 * K;
+  c.width = Math.ceil(w); c.height = Math.ceil(h);
+  if (bg) { ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(0, 0, c.width, c.height); }
+  ctx.font = FONT(fs * K); ctx.fillStyle = color; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+  ctx.fillText(txt, c.width / 2, c.height / 2 + fs * K * 0.05);
+  const img = await out.embedPng(c.toDataURL('image/png')), W = c.width / K, H = c.height / K;
+  const Lp = vp1.convertToPdfPoint(C[0] - W / 2, C[1] + H / 2);
+  pg.drawImage(img, { x: Lp[0], y: Lp[1], width: W, height: H, rotate: degrees(rot), opacity: op });
+}
+const svgPath = (pts, closed) => 'M ' + pts.map(q => q[0].toFixed(3) + ' ' + (-q[1]).toFixed(3)).join(' L ') + (closed ? ' Z' : '');
+async function drawAnnotPdf(out, pg, a, vp1, rot, en) {
+  const color = hexRgb(a.color), th = Math.max(a.w, 0.3), op = a.op == null ? 1 : a.op, dash = dashOf(a, 1);
+  const stroke = (pts, closed, useDash = true) => {
+    if (pts.length === 1) { pg.drawCircle({ x: pts[0][0], y: pts[0][1], size: th / 2, color, opacity: op }); return; }
+    const o = { x: 0, y: 0, borderColor: color, borderWidth: th, borderOpacity: op, borderLineCap: LineCapStyle.Round };
+    if (useDash && dash.length) o.borderDashArray = dash;
+    pg.drawSvgPath(svgPath(pts, closed), o);
+  };
+  const fill = (pts, alpha) => pg.drawSvgPath(svgPath(pts, true), { x: 0, y: 0, color: hexRgb(a.fill || a.color), opacity: op * alpha });
+  const fop = a.fop == null ? 0.3 : a.fop;
+  switch (a.type) {
+    case 'pen': case 'line': stroke(a.pts, false); break;
+    case 'arrow': stroke(a.pts, false); arrowHead(a).forEach(s => stroke(s, false, false)); break;
+    case 'rect': case 'ellipse': case 'cloud': { const pts = geomPts(a); if (a.fill) fill(pts, fop); stroke(pts, true); break; }
+    case 'highlight': fill(rectPts(a), 0.35); break;
+    case 'mlen':
+      stroke(a.pts, false); ticks(a).forEach(s => stroke(s, false, false));
+      await labelPdf(out, pg, vp1, rot, labelCenter(a, vp1), measureText(a, en), a.size, a.color, true, op); break;
+    case 'marea':
+      if (a.pts.length < 3) break;
+      fill(a.pts, a.fill ? fop : 0.12); stroke(a.pts, true);
+      await labelPdf(out, pg, vp1, rot, labelCenter(a, vp1), measureText(a, en), a.size, a.color, true, op); break;
+    case 'mcount':
+      pg.drawCircle({ x: a.pts[0][0], y: a.pts[0][1], size: a.size * 0.75, color, opacity: op });
+      await labelPdf(out, pg, vp1, rot, labelCenter(a, vp1), String(a.n), a.size * 0.8, '#ffffff', false, op); break;
+    case 'text': {
+      const ti = textImage(a), img = await out.embedPng(ti.url);
+      const P = vp1.convertToViewportPoint(a.pts[0][0], a.pts[0][1]);
+      const Lp = vp1.convertToPdfPoint(P[0], P[1] + ti.h);
+      pg.drawImage(img, { x: Lp[0], y: Lp[1], width: ti.w, height: ti.h, rotate: degrees(rot), opacity: op });
+      break;
+    }
+  }
+}
+async function buildPdf(doc) {
+  const out = await PDFDocument.create(), libs = {}, copied = {}, used = new Set();
+  const need = {};
+  doc.pages.forEach(en => { (need[en.src] = need[en.src] || new Set()).add(en.idx); });
+  for (const sid of Object.keys(need)) {
+    libs[sid] = await PDFDocument.load(S.sources[sid].bytes, { ignoreEncryption: true });
+    const list = [...need[sid]], pages = await out.copyPages(libs[sid], list);
+    copied[sid] = new Map(list.map((ix, k) => [ix, pages[k]]));
+  }
+  for (const en of doc.pages) {
+    let pg = copied[en.src].get(en.idx);
+    if (used.has(pg)) [pg] = await out.copyPages(libs[en.src], [en.idx]);
+    used.add(pg); out.addPage(pg);
+    const rot = totalRot(en); pg.setRotation(degrees(rot));
+    if (en.annots.length) {
+      const proxy = await getProxy(S.sources[en.src], en.idx);
+      const vp1 = proxy.getViewport({ scale: 1, rotation: rot });
+      for (const a of en.annots) await drawAnnotPdf(out, pg, a, vp1, rot, en);
+    }
+  }
+  out.setProducer('Redpen v1.4.1');
+  return out.save();
+}
+async function deliver(bytes, name, type = 'application/pdf') {
+  const blob = new Blob([bytes], { type });
+  if (COARSE && navigator.canShare) {
+    try {
+      const file = new File([blob], name, { type });
+      if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+async function saveDoc() {
+  const doc = activeDoc(); if (!doc) return toast('Chưa có file để lưu');
+  toast('Đang lưu…', 0);
+  try {
+    const bytes = await buildPdf(doc);
+    const name = doc.name.replace(/\.pdf$/i, '').replace(/_markup$/, '') + '_markup.pdf';
+    await deliver(bytes, name);
+    doc.dirty = false; updateDirty(); toast('Đã lưu ' + name);
+  } catch (e) { console.error(e); toast('', 1); toast('Lỗi khi lưu: ' + (e.message || e), 5000); }
+}
+
+/* ---------- in ---------- */
+async function printDoc() {
+  const doc = activeDoc(); if (!doc) return toast('Chưa có file để in');
+  const r = await cmdAsk(`<b>IN</b> › Trang nào? (để trống = tất cả ${doc.pages.length} trang):`, { value: String(activePane().curPage + 1), placeholder: 'vd: 1-3,5' });
+  if (r === null) return;
+  const idxs = parseRange(r, doc.pages.length); if (!idxs || !idxs.length) return toast('Khoảng trang không hợp lệ');
+  if (idxs.length > 60 && !(await cmdConfirm(`<b>IN</b> › ${idxs.length} trang có thể chậm. Tiếp tục?`, 'In', 'Hủy'))) return;
+  const area = $('#printArea'); area.innerHTML = '';
+  try {
+    for (let k = 0; k < idxs.length; k++) {
+      toast(`Đang chuẩn bị in ${k + 1}/${idxs.length}…`, 0);
+      const c = await renderFlat(doc, idxs[k], COARSE ? 1800 : 2400);
+      const img = new Image(); img.src = c.toDataURL('image/jpeg', 0.92); area.appendChild(img);
+    }
+    await Promise.all([...area.querySelectorAll('img')].map(i => i.decode ? i.decode().catch(() => {}) : 0));
+    toast('', 1);
+    window.print();
+  } catch (e) { console.error(e); toast('Lỗi khi in: ' + (e.message || e), 5000); }
+}
+window.addEventListener('afterprint', () => { $('#printArea').innerHTML = ''; });
+
+/* ---------- chế độ đọc ---------- */
+function setReading(on) {
+  S.reading = on;
+  document.body.classList.toggle('reading', on);
+  $('#bRead').classList.toggle('on', on);
+  if (on) { const de = document.documentElement; if (de.requestFullscreen && !document.fullscreenElement) de.requestFullscreen().catch(() => {}); }
+  else if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  updateReadInfo();
+}
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && S.reading) setReading(false); });
+function goPage(delta) {
+  const p = activePane(), doc = p && getDoc(p.docId); if (!doc) return;
+  scrollToPage(p, clamp(p.curPage + delta, 0, doc.pages.length - 1));
+}
+
+/* ---------- danh sách markup (kiểu Markups List) ---------- */
+const TYPE_LBL = Object.fromEntries(TOOLS.map(x => [x.t, x.l]));
+const ST_LBL = { open: 'Mở', done: 'Đã xử lý', rej: 'Không xử lý' };
+let mlTimer = 0;
+function mlSoon() { clearTimeout(mlTimer); mlTimer = setTimeout(refreshMlist, 60); }
+function fmtTime(t) {
+  if (!t) return '';
+  const d = new Date(t), z = n => String(n).padStart(2, '0');
+  return `${z(d.getDate())}/${z(d.getMonth() + 1)}/${d.getFullYear()} ${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+function mlItems(doc) {
+  const scope = $('#mlFilter').value, st = $('#mlStFilter').value, q = $('#mlSearch').value.trim().toLowerCase();
+  const cur = activePane().curPage, out = [];
+  let n = 0;
+  doc.pages.forEach((en, i) => en.annots.forEach(a => {
+    n++;
+    if (scope === 'page' && i !== cur) return;
+    if (st && (a.status || 'open') !== st) return;
+    if (q && ![a.text, a.note, TYPE_LBL[a.type], a.author].join(' ').toLowerCase().includes(q)) return;
+    out.push({ no: n, i, a });
+  }));
+  return { out, total: n };
+}
+function toggleMlist(on) {
+  const m = $('#mlist'); m.hidden = on === undefined ? !m.hidden : !on;
+  $('#bList').classList.toggle('on', !m.hidden);
+  refreshMlist();
+}
+function refreshMlist() {
+  const doc = activeDoc(), tb = $('#mlRows');
+  if ($('#mlist').hidden) return;
+  if (!doc) { tb.innerHTML = '<tr><td colspan="9" class="mlempty">Chưa có file</td></tr>'; $('#mlCount').textContent = ''; return; }
+  const { out, total } = mlItems(doc);
+  $('#mlCount').textContent = `${out.length}/${total}`;
+  if (!out.length) { tb.innerHTML = `<tr><td colspan="9" class="mlempty">${total ? 'Không có markup khớp bộ lọc' : 'Chưa có markup nào. Vẽ thử một cái cloud xem 😄'}</td></tr>`; return; }
+  tb.innerHTML = out.map(({ no, i, a }) => {
+    const st = a.status || 'open';
+    return `<tr data-i="${i}" data-id="${a.id}">
+      <td>${no}</td><td>${i + 1}</td><td>${esc(TYPE_LBL[a.type] || a.type)}</td>
+      <td><span class="dot" style="background:${a.color}"></span></td>
+      <td>${esc(a.type === 'text' ? a.text : MEAS.includes(a.type) ? measureText(a, doc.pages[i]) : '')}</td>
+      <td><input class="note" value="${esc(a.note || '')}" placeholder="Ghi comment…"></td>
+      <td><select class="st st-${st}">${Object.entries(ST_LBL).map(([k, v]) => `<option value="${k}"${k === st ? ' selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td>${esc(a.author || '')}</td><td style="white-space:nowrap">${fmtTime(a.created)}</td></tr>`;
+  }).join('');
+  mlMarkSel();
+}
+function mlMarkSel() {
+  const rows = document.querySelectorAll('#mlRows tr[data-id]');
+  const doc = activeDoc();
+  rows.forEach(r => {
+    const on = !!(doc && isSelected(doc.id, +r.dataset.i, +r.dataset.id));
+    r.classList.toggle('cur', on);
+    if (on && !r.contains(document.activeElement)) r.scrollIntoView({ block: 'nearest' });
+  });
+}
+function mlFind(tr) {
+  const doc = activeDoc(); if (!doc || !tr) return null;
+  const i = +tr.dataset.i, en = doc.pages[i]; if (!en) return null;
+  const a = en.annots.find(x => x.id === +tr.dataset.id);
+  return a ? { doc, i, a } : null;
+}
+async function gotoAnnot(doc, i, a) {
+  const p = activePane(); if (!p || p.docId !== doc.id) return;
+  if (S.tool !== 'select') setTool('select');
+  setSel({ docId: doc.id, i, ids: groupIds(doc.pages[i], a) });
+  const el = p.pageEls[i]; if (!el) return;
+  const en = doc.pages[i], pg = await getProxy(S.sources[en.src], en.idx);
+  const vp = pg.getViewport({ scale: p.scale, rotation: totalRot(en) }), b = dispBBox(a, vp);
+  p.scroller.scrollTop = el.offsetTop + b.y0 - p.scroller.clientHeight / 3;
+  p.scroller.scrollLeft = el.offsetLeft + b.x0 - p.scroller.clientWidth / 3;
+}
+function csvCell(v) { v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function exportCsv() {
+  const doc = activeDoc(); if (!doc) return toast('Chưa có file');
+  const { out } = mlItems(doc);
+  if (!out.length) return toast('Không có markup để xuất');
+  const head = ['STT', 'Trang', 'Loại', 'Màu', 'Nội dung / Số đo', 'Comment', 'Trạng thái', 'Người tạo', 'Thời gian', 'File'];
+  const rows = out.map(({ no, i, a }) => [no, i + 1, TYPE_LBL[a.type] || a.type, a.color, a.type === 'text' ? a.text : MEAS.includes(a.type) ? measureText(a, doc.pages[i]) : '', a.note || '', ST_LBL[a.status || 'open'], a.author || '', fmtTime(a.created), doc.name]);
+  const csv = '﻿' + [head, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
+  deliver(new TextEncoder().encode(csv), doc.name.replace(/\.pdf$/i, '') + '_comments.csv', 'text/csv');
+}
+$('#bList').onclick = () => toggleMlist();
+$('#mlClose').onclick = () => toggleMlist(false);
+$('#mlFilter').onchange = refreshMlist;
+$('#mlStFilter').onchange = refreshMlist;
+$('#mlSearch').oninput = mlSoon;
+$('#mlCsv').onclick = exportCsv;
+$('#mlAuthor').onclick = async () => {
+  const n = await cmdAsk('<b>NGƯỜI REVIEW</b> › Tên gắn vào markup mới:', { value: S.author });
+  if (n === null) return;
+  S.author = n.trim(); try { localStorage.setItem('redpen_author', S.author); } catch (e) {}
+  toast(S.author ? 'Người review: ' + S.author : 'Đã bỏ tên người review');
+};
+$('#mlRows').addEventListener('click', e => {
+  if (e.target.closest('input,select')) return;
+  const f = mlFind(e.target.closest('tr[data-id]')); if (f) gotoAnnot(f.doc, f.i, f.a);
+});
+$('#mlRows').addEventListener('focusin', e => {
+  const f = mlFind(e.target.closest('tr[data-id]')); if (f && !isSelected(f.doc.id, f.i, f.a.id)) gotoAnnot(f.doc, f.i, f.a);
+});
+$('#mlRows').addEventListener('change', e => {
+  const f = mlFind(e.target.closest('tr[data-id]')); if (!f) return;
+  const before = snap(f.doc);
+  if (e.target.classList.contains('note')) f.a.note = e.target.value;
+  else if (e.target.classList.contains('st')) { f.a.status = e.target.value; e.target.className = 'st st-' + f.a.status; }
+  else return;
+  commit(f.doc, before);
+});
+$('#mlRows').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.classList.contains('note')) e.target.blur(); });
+(() => {
+  const g = $('#mlGrip'), m = $('#mlist'); let st = null;
+  g.addEventListener('pointerdown', e => { st = { y: e.clientY, h: m.offsetHeight, moved: false }; g.setPointerCapture(e.pointerId); e.preventDefault(); });
+  g.addEventListener('pointermove', e => {
+    if (!st) return;
+    const dy = e.clientY - st.y; if (Math.abs(dy) > 6) st.moved = true;
+    if (!st.moved) return;
+    const h = st.h - dy;
+    m.style.height = clamp(h, 90, innerHeight * 0.75) + 'px';
+  });
+  const end = () => { st = null; }; g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
+})();
+
+$('#cmdBtns').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.v === 'ok') cmdEnd($('#cmdIn').value);
+  else cmdEnd(CMD.opts[+b.dataset.v].v);
+});
+$('#cmdX').onclick = () => cmdEnd(null);
+$('#cmdIn').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); cmdEnd($('#cmdIn').value); }
+  else if (e.key === 'Escape') { e.preventDefault(); cmdEnd(null); }
+});
+
+/* ---------- bảng Thuộc tính ---------- */
+let propsTimer = 0;
+function propsSoon() { clearTimeout(propsTimer); propsTimer = setTimeout(() => { if (!$('#sidebar').hidden && S.tab === 'props') renderProps(); }, 40); }
+const LINE_T = ['pen', 'line', 'arrow', 'rect', 'ellipse', 'cloud', 'mlen', 'marea'];
+const SIZE_T = ['text', 'mlen', 'marea', 'mcount'];
+function renderProps() {
+  const box = $('#tabProps'), list = selAnnots();
+  const multiChk = `<label class="prow" style="gap:6px"><input type="checkbox" id="pMulti"${S.multi ? ' checked' : ''}> Chạm để chọn thêm (dùng trên điện thoại)</label>`;
+  if (!list.length) {
+    box.innerHTML = `<div class="phint">Chọn markup để xem và sửa thuộc tính.<br>• <b>Shift+click</b> hoặc <b>kéo khung</b> (công cụ Chọn) để chọn nhiều<br>• <b>Ctrl+A</b>: chọn hết markup trang đang xem<br>• Nhấp đúp vào markup để mở bảng này</div>${multiChk}`;
+    $('#pMulti').onchange = e => { S.multi = e.target.checked; };
+    return;
+  }
+  const a = list[0], one = list.length === 1, doc = getDoc(S.sel.docId), en = doc.pages[S.sel.i];
+  const types = [...new Set(list.map(x => x.type))], has = arr => list.some(x => arr.includes(x.type));
+  const grouped = list.some(x => x.g);
+  const op = Math.round((a.op == null ? 1 : a.op) * 100), fop = Math.round((a.fop == null ? 0.3 : a.fop) * 100);
+  let h = `<div class="ptitle">${one ? esc(TYPE_LBL[a.type] || a.type) : list.length + ' markup đã chọn'}${grouped ? ' · 🔗 group' : ''}</div>
+  <div class="phint">Trang ${S.sel.i + 1}${one ? '' : ' · ' + types.map(t => TYPE_LBL[t] || t).join(', ')}</div><div class="pf">`;
+  h += `<label>Màu</label><div class="prow">${COLORS.map(c => `<button class="psw" data-pc="${c}" style="background:${c}"></button>`).join('')}<input type="color" id="pColor" value="${a.color}"></div>`;
+  if (has(LINE_T)) {
+    h += `<label>Độ dày (pt)</label><input type="number" id="pW" min="0.1" max="50" step="0.25" value="${(+a.w || 0).toFixed(2)}">`;
+    h += `<label>Kiểu nét</label><select id="pDash"><option value="">━━ Liền</option><option value="dash"${a.dash === 'dash' ? ' selected' : ''}>╍╍ Gạch</option><option value="dot"${a.dash === 'dot' ? ' selected' : ''}>┈┈ Chấm</option></select>`;
+  }
+  h += `<label>Độ đậm</label><div class="prow"><input type="range" id="pOp" min="10" max="100" step="5" value="${op}"><span>${op}%</span></div>`;
+  if (has(CLOSED)) {
+    h += `<label>Màu tô</label><div class="prow"><input type="checkbox" id="pFillOn"${a.fill ? ' checked' : ''}><input type="color" id="pFill" value="${a.fill || a.color}"></div>`;
+    h += `<label>Độ đậm tô</label><div class="prow"><input type="range" id="pFop" min="5" max="100" step="5" value="${fop}"><span>${fop}%</span></div>`;
+  }
+  if (has(SIZE_T)) h += `<label>Cỡ chữ (pt)</label><input type="number" id="pSize" min="2" max="200" step="0.5" value="${(+a.size || 10).toFixed(1)}">`;
+  if (has(['cloud'])) h += `<label>Bước cloud</label><input type="number" id="pArc" min="1" max="200" step="1" value="${Math.round(list.find(x => x.type === 'cloud').arc || 10)}">`;
+  if (one && a.type === 'text') h += `<label>Nội dung</label><textarea id="pText">${esc(a.text)}</textarea>`;
+  if (one && MEAS.includes(a.type)) h += `<label>Số đo</label><div class="ro">${esc(measureText(a, en))}</div>${en.scale ? `<label>Tỷ lệ</label><div>≈ ${ratioTxt(en.scale)} (${en.scale.unit})</div>` : ''}`;
+  h += `<label>Comment</label><input type="text" id="pNote" value="${one ? esc(a.note || '') : ''}" placeholder="${one ? 'Ghi comment…' : 'Gán cho tất cả đã chọn…'}">`;
+  h += `<label>Trạng thái</label><select id="pSt">${one ? '' : '<option value="">— giữ nguyên —</option>'}${Object.entries(ST_LBL).map(([k, v]) => `<option value="${k}"${one && (a.status || 'open') === k ? ' selected' : ''}>${v}</option>`).join('')}</select>`;
+  if (one) h += `<label>Người tạo</label><div>${esc(a.author || '—')}</div><label>Thời gian</label><div>${fmtTime(a.created) || '—'}</div>`;
+  h += `</div><div class="pbtns">
+    <button id="pGroup"${list.length < 2 ? ' disabled' : ''}>🔗 Group</button><button id="pUngroup"${grouped ? '' : ' disabled'}>⛓ Ungroup</button>
+    <button id="pChest" class="pri">⭐ Thêm vào Tool Chest</button><button id="pDel">🗑 Xóa</button></div>${multiChk}`;
+  box.innerHTML = h;
+  const on = (id, ev, fn) => { const x = $('#' + id); if (x) x.addEventListener(ev, fn); };
+  box.querySelectorAll('[data-pc]').forEach(b => b.onclick = () => editSel(x => { x.color = b.dataset.pc; }, x => x.type !== 'highlight'));
+  on('pColor', 'change', e => editSel(x => { x.color = e.target.value; }));
+  on('pW', 'change', e => { const v = +e.target.value; if (v > 0) editSel(x => { x.w = v; }, x => LINE_T.includes(x.type)); });
+  on('pDash', 'change', e => editSel(x => { if (e.target.value) x.dash = e.target.value; else delete x.dash; }, x => LINE_T.includes(x.type)));
+  on('pOp', 'input', e => { e.target.nextElementSibling.textContent = e.target.value + '%'; });
+  on('pOp', 'change', e => editSel(x => { x.op = +e.target.value / 100; }));
+  on('pFillOn', 'change', e => { const c = $('#pFill').value; editSel(x => { if (e.target.checked) x.fill = c; else delete x.fill; }, x => CLOSED.includes(x.type)); });
+  on('pFill', 'change', e => { $('#pFillOn').checked = true; editSel(x => { x.fill = e.target.value; }, x => CLOSED.includes(x.type)); });
+  on('pFop', 'input', e => { e.target.nextElementSibling.textContent = e.target.value + '%'; });
+  on('pFop', 'change', e => editSel(x => { x.fop = +e.target.value / 100; if (!x.fill) x.fill = x.color; }, x => CLOSED.includes(x.type)));
+  on('pSize', 'change', e => { const v = +e.target.value; if (v > 0) editSel(x => { x.size = v; }, x => SIZE_T.includes(x.type)); });
+  on('pArc', 'change', e => { const v = +e.target.value; if (v > 0) editSel(x => { x.arc = v; }, x => x.type === 'cloud'); });
+  on('pText', 'change', e => { if (e.target.value.trim()) editSel(x => { x.text = e.target.value; }); });
+  on('pNote', 'change', e => editSel(x => { x.note = e.target.value; }));
+  on('pNote', 'keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+  on('pSt', 'change', e => { if (e.target.value) editSel(x => { x.status = e.target.value; }); });
+  on('pGroup', 'click', () => groupSel(true));
+  on('pUngroup', 'click', () => groupSel(false));
+  on('pChest', 'click', addSelToChest);
+  on('pDel', 'click', delSel);
+  $('#pMulti').onchange = e => { S.multi = e.target.checked; };
+}
+
+/* ---------- Tool Chest (thư viện) ---------- */
+const CHEST_KEY = 'redpen_chest';
+function chestDefaults() {
+  const meta = {};
+  return [
+    { id: 'd1', name: 'Cloud REVISE', items: [
+      { type: 'cloud', color: '#e11d48', w: 1.5, arc: 10, size: 12, pts: [[-62, -24], [62, 24]], ...meta },
+      { type: 'text', color: '#e11d48', w: 0, size: 14, text: 'REVISE', pts: [[-26, 9]], ...meta }] },
+    { id: 'd2', name: 'APPROVED', items: [
+      { type: 'rect', color: '#16a34a', w: 2, size: 12, pts: [[-58, -16], [58, 16]], ...meta },
+      { type: 'text', color: '#16a34a', w: 0, size: 16, text: 'APPROVED', pts: [[-46, 10]], ...meta }] },
+    { id: 'd3', name: 'Cần làm rõ (?)', items: [
+      { type: 'cloud', color: '#f97316', w: 1.5, arc: 8, size: 12, pts: [[-22, -22], [22, 22]], ...meta },
+      { type: 'text', color: '#f97316', w: 0, size: 22, text: '?', pts: [[-6, 14]], ...meta }] },
+  ];
+}
+function loadChest() {
+  try { const v = JSON.parse(localStorage.getItem(CHEST_KEY) || 'null'); if (Array.isArray(v)) return v; } catch (e) {}
+  return chestDefaults();
+}
+function saveChest() { try { localStorage.setItem(CHEST_KEY, JSON.stringify(S.chest)); } catch (e) { toast('Không lưu được Tool Chest vào trình duyệt'); } }
+// mẫu: toạ độ tương đối quanh tâm khung bao
+function makeTemplate(annots) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  annots.forEach(a => geomPts(a).forEach(q => { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }));
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  return annots.map(a => {
+    const c = JSON.parse(JSON.stringify(a));
+    ['id', 'g', 'status', 'author', 'created', 'n'].forEach(k => delete c[k]);
+    c.pts = c.pts.map(q => [q[0] - cx, q[1] - cy]);
+    return c;
+  });
+}
+function instantiate(items, at, startN, preview, group = true) {
+  const g = group && items.length > 1 ? newId() : null;
+  let n = startN || 0;
+  return items.map(t => {
+    const a = JSON.parse(JSON.stringify(t));
+    a.pts = a.pts.map(q => [q[0] + at[0], q[1] + at[1]]);
+    if (!preview) { a.id = newId(); a.status = 'open'; a.author = S.author; a.created = Date.now(); if (a.note == null) a.note = ''; if (g) a.g = g; }
+    if (a.type === 'mcount') a.n = ++n;
+    if (preview) a.op = (a.op == null ? 1 : a.op) * 0.5;
+    return a;
+  });
+}
+function maxCount(doc) { let n = 0; doc.pages.forEach(pg => pg.annots.forEach(x => { if (x.type === 'mcount') n = Math.max(n, x.n || 0); })); return n; }
+function placeItems(doc, i, at, items, group = true) {
+  const before = snap(doc), made = instantiate(items, at, maxCount(doc), false, group);
+  doc.pages[i].annots.push(...made);
+  commit(doc, before); redrawDocPage(doc.id, i);
+  return made;
+}
+async function addSelToChest() {
+  const list = selAnnots(); if (!list.length) return toast('Chọn markup trước đã');
+  const def = list.length === 1 ? (list[0].type === 'text' ? list[0].text : TYPE_LBL[list[0].type]) : list.map(a => a.type === 'text' ? a.text : '').filter(Boolean).join(' ') || `Nhóm ${list.length} markup`;
+  const name = await cmdAsk('<b>TOOL CHEST</b> › Đặt tên cho mục mới:', { value: String(def).slice(0, 40) });
+  if (name === null) return;
+  S.chest.push({ id: 'c' + Date.now(), name: name.trim() || def, items: makeTemplate(list) });
+  saveChest(); toast('Đã thêm vào Tool Chest ⭐');
+  if (!$('#sidebar').hidden && S.tab === 'chest') renderChest();
+}
+function previewItems(cv, items) {
+  const ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  items.forEach(a => { geomPts(a).forEach(q => { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); });
+    if (a.type === 'text') { x1 = Math.max(x1, a.pts[0][0] + a.size * 0.6 * String(a.text).length); y0 = Math.min(y0, a.pts[0][1] - a.size * 1.3); } });
+  const k = Math.min((W - 8) / Math.max(x1 - x0, 1), (H - 8) / Math.max(y1 - y0, 1));
+  const ox = (W - (x1 - x0) * k) / 2, oy = (H - (y1 - y0) * k) / 2;
+  const vp = { scale: k, convertToViewportPoint: (x, y) => [ox + (x - x0) * k, oy + (y1 - y) * k] };
+  items.forEach(a => drawAnnot(ctx, vp, { ...a, n: a.n || 1 }, null));
+}
+function renderChest() {
+  const box = $('#tabChest'); if (!box || $('#sidebar').hidden || S.tab !== 'chest') return;
+  box.innerHTML = `<div class="phint">Chạm một mục rồi chạm lên bản vẽ để đặt (đặt được nhiều lần). Esc để thôi.</div>
+    <div class="chbtns"><button class="pri" id="chAdd">➕ Thêm vùng chọn</button><button id="chExp">⬇ Xuất</button><button id="chImp">⬆ Nhập</button></div>
+    <div id="chList" style="display:flex;flex-direction:column;gap:6px"></div>`;
+  const L = $('#chList');
+  if (!S.chest.length) L.innerHTML = '<div class="phint">Thư viện trống.</div>';
+  S.chest.forEach(it => {
+    const d = document.createElement('div'); d.className = 'chitem' + (S.stamp && S.stamp.id === it.id ? ' on' : ''); d.dataset.id = it.id;
+    d.innerHTML = `<canvas width="128" height="88"></canvas><span title="${esc(it.name)}">${esc(it.name)}</span><button data-a="ren" title="Đổi tên">✎</button><button data-a="del" title="Xóa khỏi thư viện">🗑</button>`;
+    L.appendChild(d); previewItems(d.querySelector('canvas'), it.items);
+  });
+  $('#chAdd').onclick = addSelToChest;
+  $('#chExp').onclick = () => deliver(new TextEncoder().encode(JSON.stringify({ app: 'Redpen', chest: S.chest }, null, 1)), 'redpen-toolchest.json', 'application/json');
+  $('#chImp').onclick = () => $('#chestFile').click();
+}
+async function onChestClick(e) {
+  const it = e.target.closest('.chitem'); if (!it) return;
+  const item = S.chest.find(x => x.id === it.dataset.id); if (!item) return;
+  const a = e.target.dataset.a;
+  if (a === 'del') {
+    if (!(await cmdConfirm(`<b>TOOL CHEST</b> › Xóa "${esc(item.name)}" khỏi thư viện?`, 'Xóa', 'Hủy'))) return;
+    S.chest = S.chest.filter(x => x !== item); saveChest(); if (S.stamp === item) setTool('select'); renderChest(); return;
+  }
+  if (a === 'ren') {
+    const n = await cmdAsk('<b>TOOL CHEST</b> › Tên mới:', { value: item.name }); if (n === null || !n.trim()) return;
+    item.name = n.trim(); saveChest(); renderChest(); return;
+  }
+  if (!activeDoc()) return toast('Mở file PDF trước đã');
+  CMD.onCancel = null;
+  setTool('stamp'); S.stamp = item; renderChest();
+  cmdInfo(`<b>TOOL CHEST</b> › Chạm lên bản vẽ để đặt "${esc(item.name)}". Esc để thôi.`, () => { if (S.tool === 'stamp') setTool('select'); });
+  if (innerWidth <= 700) toggleSidebar(false);
+}
+async function importChest(file) {
+  try {
+    const v = JSON.parse(await file.text()), arr = Array.isArray(v) ? v : v.chest;
+    if (!Array.isArray(arr)) throw new Error('Sai định dạng');
+    let n = 0;
+    arr.forEach(it => { if (it && it.name && Array.isArray(it.items)) { S.chest.push({ id: 'c' + Date.now() + '_' + (n++), name: it.name, items: it.items }); } });
+    saveChest(); renderChest(); toast(`Đã nhập ${n} mục vào Tool Chest`);
+  } catch (e) { toast('Không đọc được file thư viện: ' + e.message, 4000); }
+}
+// copy / paste markup
+function copySel() {
+  const list = selAnnots(); if (!list.length) return;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  list.forEach(a => geomPts(a).forEach(q => { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }));
+  S.clip = { items: makeTemplate(list), at: [(x0 + x1) / 2, (y0 + y1) / 2], grouped: list.length > 1 && list.every(a => a.g && a.g === list[0].g) };
+  toast(`Đã copy ${list.length} markup`);
+}
+function pasteClip() {
+  if (!S.clip) return;
+  const p = activePane(), doc = activeDoc(); if (!doc) return;
+  S.clip.at = [S.clip.at[0] + 10, S.clip.at[1] - 10];
+  const made = placeItems(doc, p.curPage, S.clip.at, S.clip.items, S.clip.grouped);
+  if (S.tool !== 'select') setTool('select');
+  setSel({ docId: doc.id, i: p.curPage, ids: made.map(a => a.id) });
+}
+
+/* ---------- gắn sự kiện ---------- */
+window.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') touchPtrs.add(e.pointerId); }, true);
+const dropPtr = e => touchPtrs.delete(e.pointerId);
+window.addEventListener('pointerup', dropPtr, true); window.addEventListener('pointercancel', dropPtr, true);
+
+$('#bOpen').onclick = () => $('#fileInput').click();
+$('#fileInput').onchange = e => { openFiles(e.target.files); e.target.value = ''; };
+$('#bSave').onclick = saveDoc;
+$('#bPrint').onclick = printDoc;
+$('#bUndo').onclick = undo;
+$('#bRedo').onclick = redo;
+$('#bDel').onclick = delSel;
+$('#bPages').onclick = () => toggleSidebar();
+$('#sbClose').onclick = () => toggleSidebar(false);
+$('#thumbs').onclick = onThumbClick;
+document.querySelector('.tabs').onclick = e => { const b = e.target.closest('button'); if (b) setTab(b.dataset.tab); };
+$('#tabChest').addEventListener('click', onChestClick);
+$('#chestFile').onchange = e => { if (e.target.files[0]) importChest(e.target.files[0]); e.target.value = ''; };
+$('#insBtn').onclick = insertPages;
+$('#newBtn').onclick = splitToNew;
+$('#bRead').onclick = () => setReading(!S.reading);
+$('#rExit').onclick = () => setReading(false);
+$('#rPrev').onclick = () => goPage(-1);
+$('#rNext').onclick = () => goPage(1);
+$('#bSync').onclick = () => {
+  S.sync = !S.sync; $('#bSync').classList.toggle('on', S.sync);
+  if (S.sync) { const p = activePane(); S.panes.forEach(o => { if (o !== p && p.scale) setScale(o, p.scale, { fromSync: true }); }); syncFrom(p); toast('Đã bật đồng bộ cuộn và zoom'); }
+  else toast('Đã tắt đồng bộ');
+};
+$('#layoutSel').onchange = e => { S.layout = +e.target.value; renderLayout(); };
+$('#bAbout').onclick = () => cmdChoose('Redpen v1.4.1\nCông cụ markup PDF offline cá nhân.\n\nFile PDF chỉ được xử lý trên máy của bạn, không gửi đi đâu.\n\nThư viện sử dụng:\n• PDF.js — Mozilla, giấy phép Apache-2.0\n• pdf-lib — Andrew Dillon, giấy phép MIT\n\nPhím tắt: V chọn · P bút · L đường · A mũi tên · R chữ nhật · E elip · C cloud · H tô sáng · T chữ · D đo dài · G diện tích (Enter để kết thúc) · N đếm\nShift+click / kéo khung: chọn nhiều · Ctrl+A chọn hết trang · Ctrl+G group · Ctrl+Shift+G bỏ group · Ctrl+C/V copy dán\nCtrl+Z/Y hoàn tác/làm lại · Delete xóa · +/− zoom · M danh sách markup · F đọc toàn màn hình · ←/→ lật trang', [{ l: 'Đóng', v: 1 }]);
+
+window.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+  const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+  if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+  if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
+  if (mod && k === 's') { e.preventDefault(); saveDoc(); return; }
+  if (mod && k === 'o') { e.preventDefault(); $('#fileInput').click(); return; }
+  if (mod && k === 'p') { e.preventDefault(); printDoc(); return; }
+  if (mod && k === 'a') { e.preventDefault(); selectAllPage(); return; }
+  if (mod && k === 'g') { e.preventDefault(); groupSel(!e.shiftKey); return; }
+  if (mod && k === 'c') { if (S.sel) { e.preventDefault(); copySel(); } return; }
+  if (mod && k === 'v') { if (S.clip) { e.preventDefault(); pasteClip(); } return; }
+  if (mod) return;
+  if (k === 'delete' || k === 'backspace') { if (S.sel) { e.preventDefault(); delSel(); } return; }
+  if (k === 'escape' && cmdActive()) { cmdEnd(null); return; }
+  if (k === 'enter' && S.poly) { e.preventDefault(); finishPoly(); return; }
+  if (k === 'escape' && S.poly) { finishPoly(true); return; }
+  if (k === 'escape') { if (S.sel) setSel(null); else if (S.reading) setReading(false); return; }
+  if (k === 'f') { setReading(!S.reading); return; }
+  if (k === 'm') { toggleMlist(); return; }
+  if (k === 'arrowright' || k === 'pagedown') { if (S.reading || k === 'pagedown') { e.preventDefault(); goPage(1); } return; }
+  if (k === 'arrowleft' || k === 'pageup') { if (S.reading || k === 'pageup') { e.preventDefault(); goPage(-1); } return; }
+  const p = activePane();
+  if ((k === '+' || k === '=') && p) { setScale(p, p.scale * 1.25); return; }
+  if ((k === '-' || k === '_') && p) { setScale(p, p.scale / 1.25); return; }
+  const tool = TOOLS.find(x => x.k && x.k === k); if (tool) setTool(tool.t);
+});
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files.length) openFiles(e.dataTransfer.files); });
+window.addEventListener('beforeunload', e => { if (S.docs.some(d => d.dirty)) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ---------- khởi động ---------- */
+S.chest = loadChest();
+buildToolbar();
+if (innerWidth <= 700) { [...$('#layoutSel').options].forEach(o => { if (+o.value > 2) o.disabled = true; }); }
+S.panes = [newPane(null)];
+renderLayout();
+setTool('select');
+</script>
+</body>
+</html>
