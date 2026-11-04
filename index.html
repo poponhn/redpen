@@ -43,6 +43,11 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh}
 #panes.drawing .ov,#panes.grab .ov{touch-action:none}
 #panes.drawing .ov{cursor:crosshair}
 #panes.texting .ov{cursor:text}
+.tl{position:absolute;inset:0;overflow:hidden;line-height:1;text-size-adjust:none;-webkit-text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;z-index:3;display:none;pointer-events:none}
+.tl span,.tl br{color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0% 0%}
+.tl span::selection{background:rgba(37,99,235,.35);color:transparent}
+#panes.txsel .tl{display:block;pointer-events:auto;user-select:text;-webkit-user-select:text}
+#panes.txsel .ov{pointer-events:none}
 .empty{color:#f3f4f6;text-align:center;margin:auto;padding:40px 16px;line-height:1.7;font-size:16px}
 .empty small{color:#d1d5db}
 #sidebar{width:260px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;flex:0 0 auto}
@@ -220,7 +225,7 @@ body.reading #mlist{display:none!important}
 <script>
 'use strict';
 /* =========================================================
-   RedPen v1.4.2 — công cụ markup PDF offline cá nhân
+   RedPen v1.5.0 — công cụ markup PDF offline cá nhân
    Thư viện: PDF.js (Apache-2.0, Mozilla) · pdf-lib (MIT, Andrew Dillon)
    ========================================================= */
 const $ = s => document.querySelector(s);
@@ -254,6 +259,7 @@ const TOOLS = [
   { t: 'cloud', i: '☁', l: 'Cloud', k: 'c' },
   { t: 'highlight', i: '▮', l: 'Tô sáng', k: 'h' },
   { t: 'text', i: 'T', l: 'Chữ', k: 't' },
+  { t: 'tsel', i: '⌶', l: 'Chọn chữ', k: 'x' },
   { t: 'mlen', i: '↔', l: 'Đo dài', k: 'd' },
   { t: 'marea', i: '⬠', l: 'Diện tích', k: 'g' },
   { t: 'mcount', i: '⊕', l: 'Đếm', k: 'n' },
@@ -689,7 +695,7 @@ function buildPaneDoc(p, keep) {
   const frag = document.createDocumentFragment();
   doc.pages.forEach((en, i) => {
     const el = document.createElement('div'); el.className = 'page'; el.dataset.i = i;
-    el.innerHTML = '<canvas class="pdfc"></canvas><canvas class="ov"></canvas>';
+    el.innerHTML = '<canvas class="pdfc"></canvas><canvas class="ov"></canvas><div class="tl"></div>';
     frag.appendChild(el); p.pageEls.push(el);
   });
   p.inner.appendChild(frag); layoutSizes(p);
@@ -709,8 +715,29 @@ function freePage(el) {
   cancelTask(el);
   const c = el.querySelector('.pdfc'), n = document.createElement('canvas'); n.className = 'pdfc'; c.replaceWith(n);
   const ov = el.querySelector('.ov'); ov.width = ov.height = 0;
-  el._scale = null; el._vp = null;
+  el._scale = null; el._vp = null; clearTL(el);
 }
+/* lớp chữ: chỉ dựng cho trang đang xem và chỉ khi bật Chọn chữ */
+function clearTL(el) { const t = el.querySelector('.tl'); if (t) t.innerHTML = ''; if (el._tlTask) { try { el._tlTask.cancel(); } catch (e) {} el._tlTask = null; } el._tlKey = null; }
+async function renderTL(p, i) {
+  if (S.tool !== 'tsel') return;
+  const el = p.pageEls[i], doc = getDoc(p.docId); if (!el || !doc || !el._vp) return;
+  const vp = el._vp, key = vp.scale + '|' + vp.rotation;
+  if (el._tlKey === key) return;
+  clearTL(el); el._tlKey = key;
+  const en = doc.pages[i];
+  try {
+    const pg = await getProxy(S.sources[en.src], en.idx);
+    const tc = await pg.getTextContent();
+    if (el._tlKey !== key || p.pageEls[i] !== el) return;
+    const box = el.querySelector('.tl'); box.style.setProperty('--scale-factor', vp.scale);
+    el._tlEmpty = !tc.items.some(x => x.str && x.str.trim());
+    if (el._tlEmpty) return;
+    const task = pdfjsLib.renderTextLayer({ textContentSource: tc, container: box, viewport: vp });
+    el._tlTask = task; await task.promise; el._tlTask = null;
+  } catch (e) { if (el._tlKey === key) el._tlKey = null; }
+}
+function renderTLVisible() { S.panes.forEach(p => p.visible && [...p.visible].forEach(i => renderTL(p, i))); }
 let rActive = 0; const rWait = [];
 function renderSlot() { if (rActive < 2) { rActive++; return Promise.resolve(); } return new Promise(r => rWait.push(r)); }
 function renderRelease() { const w = rWait.pop(); if (w) w(); else rActive = Math.max(0, rActive - 1); }
@@ -744,6 +771,7 @@ async function renderPage(p, i) {
   el._task = null;
   if (el._scale !== scale) return;
   el.querySelector('.pdfc').replaceWith(off);
+  renderTL(p, i);
 }
 function scheduleRender(p, delay) {
   clearTimeout(p._rt);
@@ -894,6 +922,7 @@ function cancelDrag() {
   else drawOverlay(d.p, d.i);
 }
 function onDown(e, p) {
+  if (S.tool === 'tsel') return;
   if (e.button > 0 || p.pinch) return;
   if (e.pointerType === 'touch' && touchPtrs.size > 1) { cancelDrag(); return; }
   const el = e.target.closest && e.target.closest('.page'); if (!el) return;
@@ -1092,7 +1121,8 @@ async function textAt(doc, i, pdf, hit, sc) {
 /* ---------- công cụ / màu / nét ---------- */
 function applyToolClass() {
   const box = $('#panes');
-  box.classList.toggle('drawing', S.tool !== 'select' && S.tool !== 'text');
+  box.classList.toggle('drawing', S.tool !== 'select' && S.tool !== 'text' && S.tool !== 'tsel');
+  box.classList.toggle('txsel', S.tool === 'tsel');
   box.classList.toggle('texting', S.tool === 'text');
 }
 function setTool(t) {
@@ -1104,6 +1134,8 @@ function setTool(t) {
   document.querySelectorAll('#tools button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
   if (t !== 'select' && S.sel) setSel(null);
   applyToolClass(); updateSelUI();
+  if (t === 'tsel') { renderTLVisible(); setTimeout(() => { const p = activePane(); if (S.tool === 'tsel' && p && p.visible.size && [...p.visible].every(i => p.pageEls[i] && p.pageEls[i]._tlEmpty)) toast('Trang này không có lớp chữ (có thể là file scan), không chọn chữ được', 2800); }, 1200); }
+  else { const s = window.getSelection && getSelection(); if (s && s.rangeCount && s.anchorNode && s.anchorNode.parentElement && s.anchorNode.parentElement.closest('.tl')) s.removeAllRanges(); }
 }
 function buildToolbar() {
   $('#tools').innerHTML = TOOLS.filter(x => !x.hidden).map(x => `<button data-t="${x.t}" title="${x.l} (${x.k.toUpperCase()})">${x.i}<span class="lbl">${x.l}</span></button>`).join('');
@@ -1295,7 +1327,7 @@ async function buildPdf(doc) {
       for (const a of en.annots) await drawAnnotPdf(out, pg, a, vp1, rot, en);
     }
   }
-  out.setProducer('RedPen v1.4.2');
+  out.setProducer('RedPen v1.5.0');
   return out.save();
 }
 async function deliver(bytes, name, type = 'application/pdf') {
@@ -1717,7 +1749,7 @@ $('#bSync').onclick = () => {
   else toast('Đã tắt đồng bộ');
 };
 $('#layoutSel').onchange = e => { S.layout = +e.target.value; renderLayout(); };
-$('#bAbout').onclick = () => cmdChoose('RedPen v1.4.2\nCông cụ markup PDF offline cá nhân.\n\nFile PDF chỉ được xử lý trên máy của bạn, không gửi đi đâu.\n\nThư viện sử dụng:\n• PDF.js — Mozilla, giấy phép Apache-2.0\n• pdf-lib — Andrew Dillon, giấy phép MIT\n\nPhím tắt: V chọn · P bút · L đường · A mũi tên · R chữ nhật · E elip · C cloud · H tô sáng · T chữ · D đo dài · G diện tích (Enter để kết thúc) · N đếm\nShift+click / kéo khung: chọn nhiều · Ctrl+A chọn hết trang · Ctrl+G group · Ctrl+Shift+G bỏ group · Ctrl+C/V copy dán\nCtrl+Z/Y hoàn tác/làm lại · Delete xóa · +/− zoom · M danh sách markup · F đọc toàn màn hình · ←/→ lật trang', [{ l: 'Đóng', v: 1 }]);
+$('#bAbout').onclick = () => cmdChoose('RedPen v1.5.0\nCông cụ markup PDF offline cá nhân.\n\nFile PDF chỉ được xử lý trên máy của bạn, không gửi đi đâu.\n\nThư viện sử dụng:\n• PDF.js — Mozilla, giấy phép Apache-2.0\n• pdf-lib — Andrew Dillon, giấy phép MIT\n\nPhím tắt: V chọn · X chọn chữ (bôi đen rồi Ctrl+C) · P bút · L đường · A mũi tên · R chữ nhật · E elip · C cloud · H tô sáng · T chữ · D đo dài · G diện tích (Enter để kết thúc) · N đếm\nShift+click / kéo khung: chọn nhiều · Ctrl+A chọn hết trang · Ctrl+G group · Ctrl+Shift+G bỏ group · Ctrl+C/V copy dán\nCtrl+Z/Y hoàn tác/làm lại · Delete xóa · +/− zoom · M danh sách markup · F đọc toàn màn hình · ←/→ lật trang', [{ l: 'Đóng', v: 1 }]);
 
 window.addEventListener('keydown', e => {
   const tag = (e.target.tagName || '').toLowerCase();
@@ -1728,9 +1760,9 @@ window.addEventListener('keydown', e => {
   if (mod && k === 's') { e.preventDefault(); saveDoc(); return; }
   if (mod && k === 'o') { e.preventDefault(); $('#fileInput').click(); return; }
   if (mod && k === 'p') { e.preventDefault(); printDoc(); return; }
-  if (mod && k === 'a') { e.preventDefault(); selectAllPage(); return; }
+  if (mod && k === 'a') { e.preventDefault(); if (S.tool === 'tsel') { const p = activePane(), el = p && p.pageEls[p.curPage || 0], t = el && el.querySelector('.tl'); if (t) { const r = document.createRange(); r.selectNodeContents(t); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } return; } selectAllPage(); return; }
   if (mod && k === 'g') { e.preventDefault(); groupSel(!e.shiftKey); return; }
-  if (mod && k === 'c') { if (S.sel) { e.preventDefault(); copySel(); } return; }
+  if (mod && k === 'c') { if (S.tool === 'tsel') return; if (S.sel) { e.preventDefault(); copySel(); } return; }
   if (mod && k === 'v') { if (S.clip) { e.preventDefault(); pasteClip(); } return; }
   if (mod) return;
   if (k === 'delete' || k === 'backspace') { if (S.sel) { e.preventDefault(); delSel(); } return; }
