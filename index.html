@@ -48,6 +48,10 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh}
 .tl span::selection{background:rgba(37,99,235,.35);color:transparent}
 #panes.txsel .tl{display:block;pointer-events:auto;user-select:text;-webkit-user-select:text}
 #panes.txsel .ov{pointer-events:none}
+#tsPop{position:fixed;z-index:60;display:flex;gap:4px;padding:4px;background:#111827;border-radius:8px;box-shadow:0 3px 12px #0007}
+#tsPop[hidden]{display:none}
+#tsPop button{height:32px;padding:0 12px;border:0;border-radius:6px;background:#1f2937;color:#fff;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
+#tsPop button:hover{background:#374151}
 .empty{color:#f3f4f6;text-align:center;margin:auto;padding:40px 16px;line-height:1.7;font-size:16px}
 .empty small{color:#d1d5db}
 #sidebar{width:260px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;flex:0 0 auto}
@@ -147,6 +151,7 @@ body.reading #mlist{display:none!important}
   @page{margin:6mm}
 }
 </style>
+<div id="tsPop" hidden><button data-a="hl">🖍 Tô sáng</button><button data-a="cp">⧉ Copy</button></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 </head>
@@ -225,7 +230,7 @@ body.reading #mlist{display:none!important}
 <script>
 'use strict';
 /* =========================================================
-   RedPen v1.5.0 — công cụ markup PDF offline cá nhân
+   RedPen v1.5.1 — công cụ markup PDF offline cá nhân
    Thư viện: PDF.js (Apache-2.0, Mozilla) · pdf-lib (MIT, Andrew Dillon)
    ========================================================= */
 const $ = s => document.querySelector(s);
@@ -1135,7 +1140,7 @@ function setTool(t) {
   if (t !== 'select' && S.sel) setSel(null);
   applyToolClass(); updateSelUI();
   if (t === 'tsel') { renderTLVisible(); setTimeout(() => { const p = activePane(); if (S.tool === 'tsel' && p && p.visible.size && [...p.visible].every(i => p.pageEls[i] && p.pageEls[i]._tlEmpty)) toast('Trang này không có lớp chữ (có thể là file scan), không chọn chữ được', 2800); }, 1200); }
-  else { const s = window.getSelection && getSelection(); if (s && s.rangeCount && s.anchorNode && s.anchorNode.parentElement && s.anchorNode.parentElement.closest('.tl')) s.removeAllRanges(); }
+  else { $('#tsPop').hidden = true; const s = window.getSelection && getSelection(); if (s && s.rangeCount && s.anchorNode && s.anchorNode.parentElement && s.anchorNode.parentElement.closest('.tl')) s.removeAllRanges(); }
 }
 function buildToolbar() {
   $('#tools').innerHTML = TOOLS.filter(x => !x.hidden).map(x => `<button data-t="${x.t}" title="${x.l} (${x.k.toUpperCase()})">${x.i}<span class="lbl">${x.l}</span></button>`).join('');
@@ -1327,7 +1332,7 @@ async function buildPdf(doc) {
       for (const a of en.annots) await drawAnnotPdf(out, pg, a, vp1, rot, en);
     }
   }
-  out.setProducer('RedPen v1.5.0');
+  out.setProducer('RedPen v1.5.1');
   return out.save();
 }
 async function deliver(bytes, name, type = 'application/pdf') {
@@ -1749,7 +1754,7 @@ $('#bSync').onclick = () => {
   else toast('Đã tắt đồng bộ');
 };
 $('#layoutSel').onchange = e => { S.layout = +e.target.value; renderLayout(); };
-$('#bAbout').onclick = () => cmdChoose('RedPen v1.5.0\nCông cụ markup PDF offline cá nhân.\n\nFile PDF chỉ được xử lý trên máy của bạn, không gửi đi đâu.\n\nThư viện sử dụng:\n• PDF.js — Mozilla, giấy phép Apache-2.0\n• pdf-lib — Andrew Dillon, giấy phép MIT\n\nPhím tắt: V chọn · X chọn chữ (bôi đen rồi Ctrl+C) · P bút · L đường · A mũi tên · R chữ nhật · E elip · C cloud · H tô sáng · T chữ · D đo dài · G diện tích (Enter để kết thúc) · N đếm\nShift+click / kéo khung: chọn nhiều · Ctrl+A chọn hết trang · Ctrl+G group · Ctrl+Shift+G bỏ group · Ctrl+C/V copy dán\nCtrl+Z/Y hoàn tác/làm lại · Delete xóa · +/− zoom · M danh sách markup · F đọc toàn màn hình · ←/→ lật trang', [{ l: 'Đóng', v: 1 }]);
+$('#bAbout').onclick = () => cmdChoose('RedPen v1.5.1\nCông cụ markup PDF offline cá nhân.\n\nFile PDF chỉ được xử lý trên máy của bạn, không gửi đi đâu.\n\nThư viện sử dụng:\n• PDF.js — Mozilla, giấy phép Apache-2.0\n• pdf-lib — Andrew Dillon, giấy phép MIT\n\nPhím tắt: V chọn · X chọn chữ (bôi đen → Tô sáng / Copy, hoặc phím H để tô sáng) · P bút · L đường · A mũi tên · R chữ nhật · E elip · C cloud · H tô sáng · T chữ · D đo dài · G diện tích (Enter để kết thúc) · N đếm\nShift+click / kéo khung: chọn nhiều · Ctrl+A chọn hết trang · Ctrl+G group · Ctrl+Shift+G bỏ group · Ctrl+C/V copy dán\nCtrl+Z/Y hoàn tác/làm lại · Delete xóa · +/− zoom · M danh sách markup · F đọc toàn màn hình · ←/→ lật trang', [{ l: 'Đóng', v: 1 }]);
 
 window.addEventListener('keydown', e => {
   const tag = (e.target.tagName || '').toLowerCase();
@@ -1777,11 +1782,77 @@ window.addEventListener('keydown', e => {
   const p = activePane();
   if ((k === '+' || k === '=') && p) { setScale(p, p.scale * 1.25); return; }
   if ((k === '-' || k === '_') && p) { setScale(p, p.scale / 1.25); return; }
+  if (k === 'h' && S.tool === 'tsel' && tsRange()) { e.preventDefault(); tsHighlight(); return; }
   const tool = TOOLS.find(x => x.k && x.k === k); if (tool) setTool(tool.t);
 });
 window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files.length) openFiles(e.dataTransfer.files); });
 window.addEventListener('beforeunload', e => { if (S.docs.some(d => d.dirty)) { e.preventDefault(); e.returnValue = ''; } });
+
+
+/* ---------- tô sáng theo chữ ---------- */
+function tsRange() {
+  const s = getSelection(); if (!s || !s.rangeCount || s.isCollapsed) return null;
+  const r = s.getRangeAt(0), n = r.commonAncestorContainer, el = (n.nodeType === 1 ? n : n.parentElement);
+  if (!el || !(el.closest('.tl') || el.closest('.inner'))) return null;
+  if (!s.toString().trim()) return null;
+  return r;
+}
+function tsUpdate() {
+  const pop = $('#tsPop');
+  const r = S.tool === 'tsel' ? tsRange() : null;
+  if (!r) { pop.hidden = true; return; }
+  const rs = [...r.getClientRects()].filter(x => x.width > 0.5); if (!rs.length) { pop.hidden = true; return; }
+  const last = rs[rs.length - 1];
+  pop.hidden = false;
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  let x = Math.min(Math.max(8, last.right - w), innerWidth - w - 8), y = last.bottom + 8;
+  if (y + h > innerHeight - 8) y = Math.max(8, rs[0].top - h - 8);
+  pop.style.left = x + 'px'; pop.style.top = y + 'px';
+}
+document.addEventListener('selectionchange', () => { clearTimeout(tsUpdate._t); tsUpdate._t = setTimeout(tsUpdate, 120); });
+function tsHighlight() {
+  const r = tsRange(); if (!r) return;
+  const text = getSelection().toString().replace(/\s+/g, ' ').trim();
+  // gom các ô chữ theo từng trang, gộp các ô cùng dòng
+  const byPage = new Map();
+  for (const c of r.getClientRects()) {
+    if (c.width < 0.5 || c.height < 0.5) continue;
+    const pe = document.elementsFromPoint(c.left + c.width / 2, c.top + c.height / 2).find(x => x.classList && x.classList.contains('page'));
+    if (!pe) continue;
+    if (!byPage.has(pe)) byPage.set(pe, []);
+    byPage.get(pe).push({ l: c.left, t: c.top, r: c.right, b: c.bottom });
+  }
+  if (!byPage.size) return;
+  const p = S.panes.find(q => q.pageEls.includes([...byPage.keys()][0])), doc = p && getDoc(p.docId); if (!doc) return;
+  const before = snap(doc), g = newId(), touched = new Set(); let n = 0;
+  for (const [pe, list] of byPage) {
+    const i = +pe.dataset.i, vp = pe._vp; if (!vp) continue;
+    list.sort((a, b) => a.t - b.t || a.l - b.l);
+    const lines = [];
+    for (const c of list) {
+      const L = lines.find(z => Math.min(z.b, c.b) - Math.max(z.t, c.t) > 0.5 * Math.min(z.b - z.t, c.b - c.t) && c.l <= z.r + 6 && c.r >= z.l - 6);
+      if (L) { L.l = Math.min(L.l, c.l); L.r = Math.max(L.r, c.r); L.t = Math.min(L.t, c.t); L.b = Math.max(L.b, c.b); } else lines.push({ ...c });
+    }
+    const br = pe.getBoundingClientRect(), kx = vp.width / br.width, ky = vp.height / br.height;
+    for (const z of lines) {
+      const p0 = vp.convertToPdfPoint((z.l - br.left) * kx, (z.t - br.top) * ky), p1 = vp.convertToPdfPoint((z.r - br.left) * kx, (z.b - br.top) * ky);
+      doc.pages[i].annots.push({ id: newId(), type: 'highlight', color: HL, w: 0, arc: 0, size: 0, pts: [p0, p1], note: text, status: 'open', author: S.author, created: Date.now(), ...(lines.length > 1 || byPage.size > 1 ? { g } : {}) });
+      n++;
+    }
+    touched.add(i);
+  }
+  if (!n) return;
+  commit(doc, before); touched.forEach(i => redrawDocPage(doc.id, i));
+  getSelection().removeAllRanges(); $('#tsPop').hidden = true;
+  toast('Đã tô sáng' + (text ? ': "' + (text.length > 40 ? text.slice(0, 40) + '…' : text) + '"' : ''));
+}
+async function tsCopy() {
+  const t = getSelection().toString(); if (!t) return;
+  try { await navigator.clipboard.writeText(t); toast('Đã copy'); } catch (e) { document.execCommand('copy'); toast('Đã copy'); }
+}
+$('#tsPop').addEventListener('pointerdown', e => e.preventDefault());
+$('#tsPop').addEventListener('click', e => { const a = e.target.closest('button') && e.target.closest('button').dataset.a; if (a === 'hl') tsHighlight(); else if (a === 'cp') tsCopy(); });
 
 /* ---------- khởi động ---------- */
 S.chest = loadChest();
