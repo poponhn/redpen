@@ -117,6 +117,8 @@ body.reading #panes{padding:0;gap:2px}
 #mlTable tr{cursor:pointer}
 #mlTable tbody tr:hover{background:#f9fafb}
 #mlTable tr.cur{background:#fee2e2}
+#mlTable tr.hid td:not(:first-child){opacity:.45}
+#mlTable input.vis{width:16px;height:16px;cursor:pointer;vertical-align:middle}
 #mlTable input.note{width:100%;min-width:180px;height:28px;border:1px solid var(--line);border-radius:4px;padding:0 6px;font:inherit}
 #mlTable select{height:28px;border:1px solid var(--line);border-radius:4px;font:inherit}
 .dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:middle}
@@ -218,7 +220,7 @@ body.reading #mlist{display:none!important}
     <button id="mlCsv" title="Xuất comment sheet ra Excel (CSV)">⬇ Excel</button>
     <button id="mlClose" title="Đóng">✕</button>
   </div>
-  <div class="mlbody"><table id="mlTable"><thead><tr><th>#</th><th>Trang</th><th>Loại</th><th>Màu</th><th>Nội dung / Số đo</th><th>Comment</th><th>Trạng thái</th><th>Người tạo</th><th>Thời gian</th></tr></thead><tbody id="mlRows"></tbody></table></div>
+  <div class="mlbody"><table id="mlTable"><thead><tr><th title="Hiện / ẩn tất cả markup trong danh sách"><input type="checkbox" id="mlVisAll" class="vis"></th><th>#</th><th>Trang</th><th>Loại</th><th>Màu</th><th>Nội dung / Số đo</th><th>Comment</th><th>Trạng thái</th><th>Người tạo</th><th>Thời gian</th></tr></thead><tbody id="mlRows"></tbody></table></div>
 </section>
 <div id="cmd" hidden><span id="cmdMsg"></span><input id="cmdIn" autocomplete="off" hidden><span id="cmdBtns"></span><button id="cmdX" title="Hủy (Esc)">✕</button><div id="cmdErr"></div></div>
 <div id="readbar"><button id="rPrev" title="Trang trước">◀</button><span id="rInfo"></span><button id="rNext" title="Trang sau">▶</button><button id="rExit" title="Thoát chế độ đọc">✕</button></div>
@@ -230,7 +232,7 @@ body.reading #mlist{display:none!important}
 <script>
 'use strict';
 /* =========================================================
-   RedPen v1.6.1 — công cụ markup PDF offline cá nhân
+   RedPen v1.6.2 — công cụ markup PDF offline cá nhân
    Thư viện: PDF.js (Apache-2.0, Mozilla) · pdf-lib (MIT, Andrew Dillon)
    ========================================================= */
 const $ = s => document.querySelector(s);
@@ -527,7 +529,7 @@ function distSeg(px, py, a, b) {
 function hitTest(annots, vp, x, y) {
   const tol = COARSE ? 14 : 7;
   for (let k = annots.length - 1; k >= 0; k--) {
-    const a = annots[k];
+    const a = annots[k]; if (a.hid) continue;
     if (a.type === 'pen' || a.type === 'line' || a.type === 'arrow' || a.type === 'mlen') {
       const pts = a.pts.map(p => vp.convertToViewportPoint(p[0], p[1])), t = tol + a.w * vp.scale / 2;
       if (pts.length === 1 && Math.hypot(x - pts[0][0], y - pts[0][1]) < t) return a;
@@ -880,7 +882,7 @@ function drawOverlay(p, i, temp) {
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, ov.width, ov.height);
   ctx.setTransform(el._opr, 0, 0, el._opr, 0, 0);
   const en = doc.pages[i];
-  en.annots.forEach(a => drawAnnot(ctx, vp, a, en));
+  en.annots.forEach(a => { if (!a.hid) drawAnnot(ctx, vp, a, en); });
   if (temp) {
     if (temp._box) {
       const b = temp._box; ctx.save(); ctx.setLineDash([4, 3]); ctx.strokeStyle = '#2563eb'; ctx.fillStyle = 'rgba(37,99,235,.08)'; ctx.lineWidth = 1;
@@ -953,7 +955,7 @@ function selectAllPage() {
   const p = activePane(), doc = activeDoc(); if (!doc) return;
   const en = doc.pages[p.curPage]; if (!en.annots.length) return toast('Trang này chưa có markup');
   if (S.tool !== 'select') setTool('select');
-  setSel({ docId: doc.id, i: p.curPage, ids: en.annots.map(a => a.id) });
+  setSel({ docId: doc.id, i: p.curPage, ids: en.annots.filter(a => !a.hid).map(a => a.id) });
 }
 
 /* ---------- thao tác chuột / cảm ứng ---------- */
@@ -1109,7 +1111,7 @@ function onUp(e, p) {
     drawOverlay(p, d.i);
     if (b.x1 - b.x0 < 4 && b.y1 - b.y0 < 4) return;
     const en = d.doc.pages[d.i], vp = d.el._vp, ids = new Set(d.add && S.sel && S.sel.docId === d.doc.id && S.sel.i === d.i ? S.sel.ids : []);
-    en.annots.forEach(a => { const q = dispBBox(a, vp); if (q.x0 >= b.x0 && q.y0 >= b.y0 && q.x1 <= b.x1 && q.y1 <= b.y1) groupIds(en, a).forEach(x => ids.add(x)); });
+    en.annots.forEach(a => { if (a.hid) return; const q = dispBBox(a, vp); if (q.x0 >= b.x0 && q.y0 >= b.y0 && q.x1 <= b.x1 && q.y1 <= b.y1) groupIds(en, a).forEach(x => ids.add(x)); });
     setSel(ids.size ? { docId: d.doc.id, i: d.i, ids: [...ids] } : null);
   } else if (d.moved) { commit(d.doc, d.before); propsSoon(); }
 }
@@ -1269,7 +1271,7 @@ async function renderFlat(doc, i, longPx) {
   const c = document.createElement('canvas'); c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
   const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
   await pg.render({ canvasContext: ctx, viewport: vp }).promise;
-  en.annots.forEach(a => drawAnnot(ctx, vp, a, en));
+  en.annots.forEach(a => { if (!a.hid) drawAnnot(ctx, vp, a, en); });
   return c;
 }
 function clonePages(pages) {
@@ -1400,13 +1402,13 @@ async function buildPdf(doc) {
     if (used.has(pg)) [pg] = await out.copyPages(libs[en.src], [en.idx]);
     used.add(pg); out.addPage(pg);
     const rot = totalRot(en); pg.setRotation(degrees(rot));
-    if (en.annots.length) {
+    if (en.annots.some(a => !a.hid)) {
       const proxy = await getProxy(S.sources[en.src], en.idx);
       const vp1 = proxy.getViewport({ scale: 1, rotation: rot });
-      for (const a of en.annots) await drawAnnotPdf(out, pg, a, vp1, rot, en);
+      for (const a of en.annots) if (!a.hid) await drawAnnotPdf(out, pg, a, vp1, rot, en);
     }
   }
-  out.setProducer('RedPen v1.6.1');
+  out.setProducer('RedPen v1.6.2');
   return out.save();
 }
 async function deliver(bytes, name, type = 'application/pdf') {
@@ -1501,20 +1503,22 @@ function toggleMlist(on) {
 function refreshMlist() {
   const doc = activeDoc(), tb = $('#mlRows');
   if ($('#mlist').hidden) return;
-  if (!doc) { tb.innerHTML = '<tr><td colspan="9" class="mlempty">Chưa có file</td></tr>'; $('#mlCount').textContent = ''; return; }
+  if (!doc) { tb.innerHTML = '<tr><td colspan="10" class="mlempty">Chưa có file</td></tr>'; $('#mlCount').textContent = ''; return; }
   const { out, total } = mlItems(doc);
   $('#mlCount').textContent = `${out.length}/${total}`;
-  if (!out.length) { tb.innerHTML = `<tr><td colspan="9" class="mlempty">${total ? 'Không có markup khớp bộ lọc' : 'Chưa có markup nào. Vẽ thử một cái cloud xem 😄'}</td></tr>`; return; }
+  if (!out.length) { $('#mlVisAll').checked = false; $('#mlVisAll').indeterminate = false; tb.innerHTML = `<tr><td colspan="10" class="mlempty">${total ? 'Không có markup khớp bộ lọc' : 'Chưa có markup nào. Vẽ thử một cái cloud xem 😄'}</td></tr>`; return; }
   tb.innerHTML = out.map(({ no, i, a }) => {
     const st = a.status || 'open';
-    return `<tr data-i="${i}" data-id="${a.id}">
-      <td>${no}</td><td>${i + 1}</td><td>${esc(TYPE_LBL[a.type] || a.type)}</td>
+    return `<tr data-i="${i}" data-id="${a.id}"${a.hid ? ' class="hid"' : ''}>
+      <td><input type="checkbox" class="vis" title="Hiện / ẩn"${a.hid ? '' : ' checked'}></td><td>${no}</td><td>${i + 1}</td><td>${esc(TYPE_LBL[a.type] || a.type)}</td>
       <td><span class="dot" style="background:${a.color}"></span></td>
       <td>${esc(annotTxt(a, doc.pages[i]))}</td>
       <td><input class="note" value="${esc(a.note || '')}" placeholder="Ghi comment…"></td>
       <td><select class="st st-${st}">${Object.entries(ST_LBL).map(([k, v]) => `<option value="${k}"${k === st ? ' selected' : ''}>${v}</option>`).join('')}</select></td>
       <td>${esc(a.author || '')}</td><td style="white-space:nowrap">${fmtTime(a.created)}</td></tr>`;
   }).join('');
+  const vs = out.filter(o => !o.a.hid).length, va = $('#mlVisAll');
+  va.checked = vs === out.length; va.indeterminate = vs > 0 && vs < out.length;
   mlMarkSel();
 }
 function mlMarkSel() {
@@ -1564,16 +1568,37 @@ $('#mlAuthor').onclick = async () => {
   S.author = n.trim(); try { localStorage.setItem('redpen_author', S.author); } catch (e) {}
   toast(S.author ? 'Người review: ' + S.author : 'Đã bỏ tên người review');
 };
+function setHidden(doc, pairs, hide) {
+  const before = snap(doc), pages = new Set();
+  pairs.forEach(({ i, a }) => {
+    const en = doc.pages[i], ids = groupIds(en, a);
+    en.annots.forEach(x => { if (ids.includes(x.id)) { if (hide) x.hid = true; else delete x.hid; } });
+    pages.add(i);
+  });
+  if (hide && S.sel && S.sel.docId === doc.id) {
+    const en = doc.pages[S.sel.i], ids = S.sel.ids.filter(id => { const x = en.annots.find(y => y.id === id); return x && !x.hid; });
+    if (ids.length !== S.sel.ids.length) setSel(ids.length ? { ...S.sel, ids } : null);
+  }
+  commit(doc, before); pages.forEach(i => redrawDocPage(doc.id, i));
+}
+$('#mlVisAll').addEventListener('change', e => {
+  const doc = activeDoc(); if (!doc) return;
+  const { out } = mlItems(doc); if (!out.length) return;
+  setHidden(doc, out, !e.target.checked);
+  toast(e.target.checked ? `Đã hiện ${out.length} markup` : `Đã ẩn ${out.length} markup (ẩn thì không in / không xuất PDF)`, 2500);
+});
 $('#mlRows').addEventListener('click', e => {
   if (e.target.closest('input,select')) return;
   const f = mlFind(e.target.closest('tr[data-id]')); if (f) gotoAnnot(f.doc, f.i, f.a);
 });
 $('#mlRows').addEventListener('focusin', e => {
+  if (e.target.classList.contains('vis')) return;
   const f = mlFind(e.target.closest('tr[data-id]')); if (f && !isSelected(f.doc.id, f.i, f.a.id)) gotoAnnot(f.doc, f.i, f.a);
 });
 $('#mlRows').addEventListener('change', e => {
   const f = mlFind(e.target.closest('tr[data-id]')); if (!f) return;
   const before = snap(f.doc);
+  if (e.target.classList.contains('vis')) { setHidden(f.doc, [f], !e.target.checked); return; }
   const sib = f.a.type === 'highlight' && f.a.g ? f.doc.pages.flatMap(en => en.annots).filter(x => x.type === 'highlight' && x.g === f.a.g) : [f.a];
   if (e.target.classList.contains('note')) sib.forEach(x => { x.note = e.target.value; });
   else if (e.target.classList.contains('st')) { sib.forEach(x => { x.status = e.target.value; }); e.target.className = 'st st-' + f.a.status; }
@@ -1832,7 +1857,7 @@ $('#bSync').onclick = () => {
   else toast('Đã tắt đồng bộ');
 };
 $('#layoutSel').onchange = e => { S.layout = +e.target.value; renderLayout(); };
-$('#bAbout').onclick = () => cmdChoose('RedPen v1.6.1\nCông cụ markup PDF offline cá nhân.\n\nFile PDF chỉ được xử lý trên máy của bạn, không gửi đi đâu.\n\nThư viện sử dụng:\n• PDF.js — Mozilla, giấy phép Apache-2.0\n• pdf-lib — Andrew Dillon, giấy phép MIT\n\nPhím tắt: V chọn · X chọn chữ (bôi đen → Tô sáng / Copy, hoặc phím H để tô sáng) · P bút · L đường · A mũi tên · R chữ nhật · E elip · C cloud · H tô sáng · T ghi chú (kéo từ điểm cần chỉ → chỗ đặt hộp; chạm 1 cái = hộp không mũi tên; chọn rồi kéo chấm tròn để dời đầu mũi tên) · D đo dài · G diện tích (Enter để kết thúc) · N đếm\nShift+click / kéo khung: chọn nhiều · Ctrl+A chọn hết trang · Ctrl+G group · Ctrl+Shift+G bỏ group · Ctrl+C/V copy dán\nCtrl+Z/Y hoàn tác/làm lại · Delete xóa · +/− zoom · M danh sách markup · F đọc toàn màn hình · ←/→ lật trang', [{ l: 'Đóng', v: 1 }]);
+$('#bAbout').onclick = () => cmdChoose('RedPen v1.6.2\nCông cụ markup PDF offline cá nhân.\n\nFile PDF chỉ được xử lý trên máy của bạn, không gửi đi đâu.\n\nThư viện sử dụng:\n• PDF.js — Mozilla, giấy phép Apache-2.0\n• pdf-lib — Andrew Dillon, giấy phép MIT\n\nPhím tắt: V chọn · X chọn chữ (bôi đen → Tô sáng / Copy, hoặc phím H để tô sáng) · P bút · L đường · A mũi tên · R chữ nhật · E elip · C cloud · H tô sáng · T ghi chú (kéo từ điểm cần chỉ → chỗ đặt hộp; chạm 1 cái = hộp không mũi tên; chọn rồi kéo chấm tròn để dời đầu mũi tên) · D đo dài · G diện tích (Enter để kết thúc) · N đếm\nShift+click / kéo khung: chọn nhiều · Ctrl+A chọn hết trang · Ctrl+G group · Ctrl+Shift+G bỏ group · Ctrl+C/V copy dán\nCtrl+Z/Y hoàn tác/làm lại · Delete xóa · +/− zoom · M danh sách markup · F đọc toàn màn hình · ←/→ lật trang', [{ l: 'Đóng', v: 1 }]);
 
 window.addEventListener('keydown', e => {
   const tag = (e.target.tagName || '').toLowerCase();
